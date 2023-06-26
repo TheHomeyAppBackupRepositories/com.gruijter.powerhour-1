@@ -1,3 +1,4 @@
+/* eslint-disable global-require */
 /*
 Copyright 2019 - 2023, Robin de Gruijter (gruijter@hotmail.com)
 
@@ -28,6 +29,16 @@ class MyApp extends Homey.App {
 
 	async onInit() {
 		try {
+
+			// for debugging
+			if (process.env.DEBUG === '1') {
+				try {
+					require('inspector').waitForDebugger();
+				}	catch (error) {
+					require('inspector').open(9222, '0.0.0.0', true);
+				}
+			}
+
 			// register some listeners
 			process.on('unhandledRejection', (error) => {
 				this.error('unhandledRejection! ', error);
@@ -64,6 +75,14 @@ class MyApp extends Homey.App {
 			this.log('Power by the Hour app is running...');
 
 		} catch (error) { this.error(error); }
+	}
+
+	async onUninit() {
+		this.log('app onUninit called');
+		this.homey.removeAllListeners('everyhour');
+		this.homey.removeAllListeners('set_tariff_power');
+		this.homey.removeAllListeners('set_tariff_gas');
+		this.homey.removeAllListeners('set_tariff_water');
 	}
 
 	everyHour() {
@@ -211,6 +230,9 @@ class MyApp extends Homey.App {
 
 		const priceLowestNextHoursCondition = this.homey.flow.getConditionCard('price_lowest_next_hours');
 		priceLowestNextHoursCondition.registerRunListener((args) => args.device.priceIsLowestNextHours(args));
+
+		const priceLowestNextKnownHoursCondition = this.homey.flow.getConditionCard('price_lowest_next_known_hours');
+		priceLowestNextKnownHoursCondition.registerRunListener((args) => args.device.priceIsLowestNextHours(args));
 
 		const priceLowestBeforeCondition = this.homey.flow.getConditionCard('price_lowest_before');
 		priceLowestBeforeCondition.registerRunListener((args) => args.device.priceIsLowestBefore(args));

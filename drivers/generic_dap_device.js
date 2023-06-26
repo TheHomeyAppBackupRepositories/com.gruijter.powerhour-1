@@ -23,6 +23,7 @@ along with com.gruijter.powerhour.  If not, see <http://www.gnu.org/licenses/>.s
 const Homey = require('homey');
 const util = require('util');
 const ECB = require('../ecb_exchange_rates');
+const charts = require('../pricecharts');
 
 const setTimeoutPromise = util.promisify(setTimeout);
 
@@ -112,7 +113,7 @@ class MyDevice extends Homey.Device {
 			await setTimeoutPromise(this.fetchDelay / 30, 'waiting is done'); // spread over 1 minute for API rate limit (400 / min)
 			await this.fetchExchangeRate();
 			await this.fetchPrices();
-			await this.setCapabilitiesAndFlows();
+			// await this.setCapabilitiesAndFlows();
 
 			// start fetching and handling prices on every hour
 			this.eventListenerHour = async () => {
@@ -131,6 +132,18 @@ class MyDevice extends Homey.Device {
 			// this.setUnavailable(error.message).catch(this.error);
 			this.restartDevice(1 * 60 * 1000); // restart after 1 minute
 		}
+	}
+
+	async onUninit() {
+		this.log(`Homey is killing ${this.getName()}`);
+		this.destroyListeners();
+		this.homey.removeAllListeners('everyhour');
+		this.homey.removeAllListeners('set_tariff_power');
+		this.homey.removeAllListeners('set_tariff_gas');
+		this.homey.removeAllListeners('set_tariff_water');
+		let delay = 1500;
+		if (!this.migrated || !this.initFirstReading) delay = 10 * 1000;
+		await setTimeoutPromise(delay);
 	}
 
 	async destroyListeners() {
@@ -250,12 +263,6 @@ class MyDevice extends Homey.Device {
 		this.log(`Device will restart in ${dly / 1000} seconds`);
 		// this.setUnavailable('Device is restarting. Wait a few minutes!');
 		await setTimeoutPromise(dly).then(() => this.onInit());
-	}
-
-	async onUninit() {
-		this.log(`Homey is killing ${this.getName()}`);
-		this.destroyListeners();
-		await setTimeoutPromise(1500);
 	}
 
 	async onAdded() {
@@ -423,7 +430,8 @@ class MyDevice extends Homey.Device {
 	async priceIsLowestNextHours(args) {
 		if (!this.state || !this.state.pricesNextHours) throw Error('no prices available');
 		// select number of coming hours
-		const comingXhours = [...this.state.pricesNextHours].slice(0, args.period);
+		const period = args.period ? args.period : 99;
+		const comingXhours = [...this.state.pricesNextHours].slice(0, period);
 		// sort and select number of lowest prices
 		const lowestNPrices = comingXhours.sort().slice(0, args.number);
 		return this.state.priceNow <= Math.max(...lowestNPrices);
@@ -577,12 +585,16 @@ class MyDevice extends Homey.Device {
 
 	// compare if new fetched market prices are same as old ones for given period, and trigger flow
 	async checkNewMarketPrices(oldPrices, newPrices, period, periods) {
-		// setup period this_day or tomorrow
+		// setup period this_day, tomorrow or next_hours
 		let start = periods.todayStart;
 		let end = periods.tomorrowStart;
 		if (period === 'tomorrow') {
 			start = periods.tomorrowStart;
 			end = periods.tomorrowEnd;
+		}
+		if (period === 'next_hours') {
+			start = periods.hourStart;
+			end = 8640000000000000; // periods.tomorrowEnd;
 		}
 		const oldPricesSelection = oldPrices
 			.filter((hourInfo) => new Date(hourInfo.time) >= start)
@@ -592,7 +604,8 @@ class MyDevice extends Homey.Device {
 			.filter((hourInfo) => new Date(hourInfo.time) < end);
 
 		// check for DST change or incomplete info
-		if (newPricesSelection.length !== 24) this.log(`${this.getName()} received ${newPricesSelection.length} hours of prices for ${period}`);
+		if (period !== 'next_hours'
+			&& newPricesSelection.length !== 24) this.log(`${this.getName()} received ${newPricesSelection.length} hours of prices for ${period}`);
 
 		// check for same pricing content
 		let samePrices = true;
@@ -614,14 +627,16 @@ class MyDevice extends Homey.Device {
 		try {
 			this.log(this.getName(), 'fetching prices of today and tomorrow (when available)');
 
-			// fetch prices with backup and retry
+			// fetch prices with retry and backup
 			const periods = this.getUTCPeriods(); // now, nowLocal, homeyOffset, H0, hourStart, todayStart, yesterdayStart, tomorrowStart, tomorrowEnd
 			if (!this.dap[0]) throw Error('no available DAP');
 			let newMarketPrices;
 			for (let index = 0; index < this.dap.length; index += 1) {
 				newMarketPrices = await this.dap[index].getPrices({ dateStart: periods.yesterdayStart, dateEnd: periods.tomorrowEnd })
 					.catch(this.log);
-				if (!newMarketPrices || !newMarketPrices[0]) {
+				// check if tomorrow is missing
+				const marketPricesNextHours = newMarketPrices.filter((hourInfo) => hourInfo.time >= periods.hourStart);
+				if (!newMarketPrices || !newMarketPrices[0] || marketPricesNextHours.length < 10) {
 					this.log(`${this.getName()} Error fetching prices from ${this.dap[index].host}. Trying again in 10 minutes`);
 					await setTimeoutPromise(10 * 60 * 1000, 'waiting is done');
 					newMarketPrices = await this.dap[index].getPrices({ dateStart: periods.yesterdayStart, dateEnd: periods.tomorrowEnd })
@@ -653,15 +668,14 @@ class MyDevice extends Homey.Device {
 				if (newMarketPrices.slice(-1).time < oldPrices.slice(-1).time) throw Error('Fetched prices are older then the stored prices');
 			}
 
+			// store the new prices and update state, capabilities and price graphs
+			await this.storePrices(newMarketPrices);
+			await this.setCapabilitiesAndFlows();
+
 			// check if new prices received and trigger flows
 			await this.checkNewMarketPrices(oldPrices, newMarketPrices, 'this_day', periods);
 			await this.checkNewMarketPrices(oldPrices, newMarketPrices, 'tomorrow', periods);
-
-			// add marked-up prices
-			const newPrices = await this.markUpPrices([...newMarketPrices]);
-
-			// store the new prices
-			await this.storePrices(newPrices);
+			await this.checkNewMarketPrices(oldPrices, newMarketPrices, 'next_hours', periods);
 
 		} catch (error) {
 			this.error(error);
@@ -762,6 +776,38 @@ class MyDevice extends Homey.Device {
 		this.state = state;
 	}
 
+	async updatePriceCharts() {
+		const urlToday = await charts.getChart(this.state.pricesThisDay);
+		if (!this.todayPriceImage) {
+			this.todayPriceImage = await this.homey.images.createImage();
+			await this.todayPriceImage.setUrl(urlToday);
+			await this.setCameraImage('todayPriceChart', ` ${this.homey.__('today')}`, this.todayPriceImage);
+		} else {
+			await this.todayPriceImage.setUrl(urlToday);
+			await this.todayPriceImage.update();
+		}
+
+		const urlTomorow = await charts.getChart(this.state.pricesTomorrow);
+		if (!this.tomorrowPriceImage) {
+			this.tomorrowPriceImage = await this.homey.images.createImage();
+			await this.tomorrowPriceImage.setUrl(urlTomorow);
+			await this.setCameraImage('tomorrowPriceChart', ` ${this.homey.__('tomorrow')}`, this.tomorrowPriceImage);
+		} else {
+			await this.tomorrowPriceImage.setUrl(urlTomorow);
+			await this.tomorrowPriceImage.update();
+		}
+
+		const urlNextHours = await charts.getChart(this.state.pricesNextHours);
+		if (!this.nextHoursPriceImage) {
+			this.nextHoursPriceImage = await this.homey.images.createImage();
+			await this.nextHoursPriceImage.setUrl(urlNextHours);
+			await this.setCameraImage('nextHoursPriceChart', ` ${this.homey.__('nextHours')}`, this.nextHoursPriceImage);
+		} else {
+			await this.nextHoursPriceImage.setUrl(urlNextHours);
+			await this.nextHoursPriceImage.update();
+		}
+	}
+
 	async setCapabilitiesAndFlows() {
 		try {
 			await this.setState();
@@ -790,6 +836,13 @@ class MyDevice extends Homey.Device {
 			const group = this.settings.tariff_update_group;
 			if (group) this.homey.emit(sendTo, { tariff: this.state.priceNow, pricesNextHours: this.state.pricesNextHours, group });
 
+			// update the price graphs
+			await this.updatePriceCharts().catch(this.error);
+
+			// trigger new nextHours prices every hour
+			if (this.state.pricesNextHours && this.state.pricesNextHours[0]) {
+				this.newPricesReceived(this.state.pricesNextHours, 'next_hours').catch(this.error);
+			}
 			// trigger new prices received right after midnight
 			if (this.state.H0 === 0) {
 				if (this.state.pricesThisDay && this.state.pricesThisDay[0]) {

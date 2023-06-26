@@ -1,1 +1,5 @@
-{}
+{
+  "today": "Today",
+  "tomorrow": "Tomorrow",
+  "nextHours": "Next hours"
+}
