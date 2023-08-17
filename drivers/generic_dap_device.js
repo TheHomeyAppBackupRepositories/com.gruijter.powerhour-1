@@ -355,6 +355,20 @@ class MyDevice extends Homey.Device {
 	}
 
 	// EXECUTORS FOR ACTION FLOWS
+
+	async createPricesJSON(period) {
+		this.log('Creating prices JSON via flow', this.getName(), period);
+
+		let prices = this.state.pricesNextHours;
+		if (period === 'tomorrow') prices = this.state.pricesTomorrow;
+		if (period === 'this_day') prices = this.state.pricesThisDay;
+		if (!prices) throw Error('No prices available');
+		const roundedPrices = prices.map((price) => Math.round(price * 10000) / 10000);
+		const priceString = JSON.stringify(({ ...roundedPrices }));
+		const tokens = { prices: priceString };
+		return tokens;
+	}
+
 	async setVariableMarkup(val) {
 		this.log('changing variable markup via flow', this.getName(), val);
 		await this.setSettings({ variableMarkup: val });
@@ -623,6 +637,33 @@ class MyDevice extends Homey.Device {
 		}
 	}
 
+	// check validity of new fetched pricing data
+	async checkPricesValidity(newMarketPrices, periods) {
+		if ((!newMarketPrices || !newMarketPrices[0] || !newMarketPrices[0].time)) throw Error('Unable to fetch prices');
+		// check if tomorrow is missing
+		const marketPricesNextHours = newMarketPrices.filter((hourInfo) => hourInfo.time >= periods.hourStart);
+		if (marketPricesNextHours.length < 10) throw Error('Unable to fetch tomorrow prices');
+		// check if hours are consecutive
+		let previousHour = new Date(newMarketPrices[0].time);
+		let consecutive = true;
+		newMarketPrices.forEach((price, idx) => {
+			if (idx !== 0) {
+				consecutive = consecutive && (new Date(price.time) - previousHour) === (1000 * 60 * 60);
+				previousHour = new Date(price.time);
+			}
+		});
+		if (!consecutive) {
+			this.log(this.getName(), newMarketPrices);
+			throw Error('Fetched prices are not in consecutive order');
+		}
+		// check if latest info is not older then before
+		const oldPrices = [...this.prices];
+		if (oldPrices && oldPrices[0] && oldPrices[0].time) {
+			if (newMarketPrices.slice(-1).time < oldPrices.slice(-1).time) throw Error('Fetched prices are older then the stored prices');
+		}
+		return true;
+	}
+
 	async fetchPrices() {
 		try {
 			this.log(this.getName(), 'fetching prices of today and tomorrow (when available)');
@@ -634,9 +675,8 @@ class MyDevice extends Homey.Device {
 			for (let index = 0; index < this.dap.length; index += 1) {
 				newMarketPrices = await this.dap[index].getPrices({ dateStart: periods.yesterdayStart, dateEnd: periods.tomorrowEnd })
 					.catch(this.log);
-				// check if tomorrow is missing
-				const marketPricesNextHours = newMarketPrices.filter((hourInfo) => hourInfo.time >= periods.hourStart);
-				if (!newMarketPrices || !newMarketPrices[0] || marketPricesNextHours.length < 10) {
+				const valid = await this.checkPricesValidity(newMarketPrices, periods).catch(this.log);
+				if (!valid) {
 					this.log(`${this.getName()} Error fetching prices from ${this.dap[index].host}. Trying again in 10 minutes`);
 					await setTimeoutPromise(10 * 60 * 1000, 'waiting is done');
 					newMarketPrices = await this.dap[index].getPrices({ dateStart: periods.yesterdayStart, dateEnd: periods.tomorrowEnd })
@@ -647,30 +687,12 @@ class MyDevice extends Homey.Device {
 				}
 			}
 
-			// check validity of new data
-			if ((!newMarketPrices || !newMarketPrices[0] || !newMarketPrices[0].time)) throw Error('Unable to fetch prices');
-			// check if hours are consecutive
-			let previousHour = new Date(newMarketPrices[0].time);
-			let consecutive = true;
-			newMarketPrices.forEach((price, idx) => {
-				if (idx !== 0) {
-					consecutive = consecutive && (new Date(price.time) - previousHour) === (1000 * 60 * 60);
-					previousHour = new Date(price.time);
-				}
-			});
-			if (!consecutive) {
-				this.log(this.getName(), newMarketPrices);
-				throw Error('Fetched prices are not in consecutive order');
-			}
-			// check if latest info is not older then before
-			const oldPrices = [...this.prices];
-			if (oldPrices && oldPrices[0] && oldPrices[0].time) {
-				if (newMarketPrices.slice(-1).time < oldPrices.slice(-1).time) throw Error('Fetched prices are older then the stored prices');
-			}
+			await this.checkPricesValidity(newMarketPrices, periods).catch(this.error);
 
 			// store the new prices and update state, capabilities and price graphs
+			const oldPrices = [...this.prices];
 			await this.storePrices(newMarketPrices);
-			await this.setCapabilitiesAndFlows();
+			await this.setCapabilitiesAndFlows({ noTriggers: true });
 
 			// check if new prices received and trigger flows
 			await this.checkNewMarketPrices(oldPrices, newMarketPrices, 'this_day', periods);
@@ -808,7 +830,7 @@ class MyDevice extends Homey.Device {
 		}
 	}
 
-	async setCapabilitiesAndFlows() {
+	async setCapabilitiesAndFlows(options) {
 		try {
 			await this.setState();
 
@@ -839,34 +861,36 @@ class MyDevice extends Homey.Device {
 			// update the price graphs
 			await this.updatePriceCharts().catch(this.error);
 
-			// trigger new nextHours prices every hour
-			if (this.state.pricesNextHours && this.state.pricesNextHours[0]) {
-				this.newPricesReceived(this.state.pricesNextHours, 'next_hours').catch(this.error);
-			}
-			// trigger new prices received right after midnight
-			if (this.state.H0 === 0) {
-				if (this.state.pricesThisDay && this.state.pricesThisDay[0]) {
-					this.newPricesReceived(this.state.pricesThisDay, 'this_day').catch(this.error);
+			if (!options || !options.noTriggers) {
+				// trigger new nextHours prices every hour
+				if (this.state.pricesNextHours && this.state.pricesNextHours[0]) {
+					this.newPricesReceived(this.state.pricesNextHours, 'next_hours').catch(this.error);
 				}
-				if (this.state.pricesTomorrow && this.state.pricesTomorrow[0]) {
-					this.newPricesReceived(this.state.pricesTomorrow, 'tomorrow').catch(this.error);
+				// trigger new prices received right after midnight
+				if (this.state.H0 === 0) {
+					if (this.state.pricesThisDay && this.state.pricesThisDay[0]) {
+						this.newPricesReceived(this.state.pricesThisDay, 'this_day').catch(this.error);
+					}
+					if (this.state.pricesTomorrow && this.state.pricesTomorrow[0]) {
+						this.newPricesReceived(this.state.pricesTomorrow, 'tomorrow').catch(this.error);
+					}
 				}
-			}
 
-			// trigger flow cards
-			if (Number.isFinite(this.state.priceNow)) {
-				const tokens = { meter_price_h0: Number(this.state.priceNow.toFixed(this.settings.decimals)) };
-				const state = { ...this.state };
-				this.homey.app.triggerPriceHighest(this, tokens, state);
-				this.homey.app.triggerPriceHighestBefore(this, tokens, state);
-				this.homey.app.triggerPriceHighestToday(this, tokens, state);
-				this.homey.app.triggerPriceAboveAvg(this, tokens, state);
-				this.homey.app.triggerPriceHighestAvg(this, tokens, state);
-				this.homey.app.triggerPriceLowest(this, tokens, state);
-				this.homey.app.triggerPriceLowestBefore(this, tokens, state);
-				this.homey.app.triggerPriceLowestToday(this, tokens, state);
-				this.homey.app.triggerPriceBelowAvg(this, tokens, state);
-				this.homey.app.triggerPriceLowestAvg(this, tokens, state);
+				// trigger flow cards
+				if (Number.isFinite(this.state.priceNow)) {
+					const tokens = { meter_price_h0: Number(this.state.priceNow.toFixed(this.settings.decimals)) };
+					const state = { ...this.state };
+					this.homey.app.triggerPriceHighest(this, tokens, state);
+					this.homey.app.triggerPriceHighestBefore(this, tokens, state);
+					this.homey.app.triggerPriceHighestToday(this, tokens, state);
+					this.homey.app.triggerPriceAboveAvg(this, tokens, state);
+					this.homey.app.triggerPriceHighestAvg(this, tokens, state);
+					this.homey.app.triggerPriceLowest(this, tokens, state);
+					this.homey.app.triggerPriceLowestBefore(this, tokens, state);
+					this.homey.app.triggerPriceLowestToday(this, tokens, state);
+					this.homey.app.triggerPriceBelowAvg(this, tokens, state);
+					this.homey.app.triggerPriceLowestAvg(this, tokens, state);
+				}
 			}
 
 		} catch (error) {

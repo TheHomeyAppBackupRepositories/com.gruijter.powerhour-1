@@ -31,13 +31,13 @@ class MyApp extends Homey.App {
 		try {
 
 			// for debugging
-			if (process.env.DEBUG === '1') {
-				try {
-					require('inspector').waitForDebugger();
-				}	catch (error) {
-					require('inspector').open(9222, '0.0.0.0', true);
-				}
-			}
+			// if (process.env.DEBUG === '1') {
+			// 	try {
+			// 		require('inspector').waitForDebugger();
+			// 	}	catch (error) {
+			// 		require('inspector').open(9222, '0.0.0.0', true);
+			// 	}
+			// }
 
 			// register some listeners
 			process.on('unhandledRejection', (error) => {
@@ -300,6 +300,10 @@ class MyApp extends Homey.App {
 		const minMaxReset = this.homey.flow.getActionCard('minmax_reset');
 		minMaxReset
 			.registerRunListener((args) => args.device.minMaxReset(true, 'flow').catch(this.error));
+
+		const pricesJSON = this.homey.flow.getActionCard('prices_json');
+		pricesJSON
+			.registerRunListener((args) => args.device.createPricesJSON(args.period));
 
 		const setMeterPower = this.homey.flow.getActionCard('set_meter_power');
 		setMeterPower
