@@ -46,19 +46,48 @@ class BatDriver extends Driver {
 					const sourceDeviceExists = device.sourceDevice && device.sourceDevice.capabilitiesObj && (device.sourceDevice.available !== null);
 					if (!sourceDeviceExists) {
 						this.error(`Source device ${deviceName} is missing.`);
-						await device.setUnavailable('Source device is missing. Retry in 10 minutes.');
+						await device.setUnavailable('Source device is missing. Retry in 10 minutes.').catch(this.error);
 						device.restartDevice(10 * 60 * 1000).catch(this.error); // restart after 10 minutes
 						return;
 					}
 					// poll all capabilities
 					await device.poll();
-					await device.setAvailable();
+					await device.setAvailable().catch(this.error);
 				} catch (error) {
 					this.error(error);
 				}
 			});
 		};
 		this.homey.on('everyhour', this.eventListenerHour);
+
+		// add listener for 5 minute retry
+		if (this.eventListenerRetry) this.homey.removeListener('retry', this.eventListenerRetry);
+		this.eventListenerRetry = async () => {
+			const devices = this.getDevices();
+			devices.forEach(async (device) => {
+				try {
+					const deviceName = device.getName();
+					if (device.migrating || device.restarting) return;
+					if (!device.initReady) {
+						this.log(`${deviceName} Restarting now`);
+						// device.onInit();
+						device.restartDevice(500).catch(this.error);
+					}
+					// HOMEY-API device - check if source device exists
+					const sourceDeviceExists = device.sourceDevice && device.sourceDevice.capabilitiesObj
+						&& Object.keys(device.sourceDevice.capabilitiesObj).length > 0 && (device.sourceDevice.available !== null);
+					if (!sourceDeviceExists) {
+						// console.log(deviceName, device.sourceDevice && device.sourceDevice.capabilitiesObj, device.sourceDevice && device.sourceDevice.available);
+						this.error(`Source device ${deviceName} is missing. Restarting now.`);
+						await device.setUnavailable('Source device is missing. Retrying ..').catch(this.error);
+						device.restartDevice(500).catch(this.error);
+					}
+				} catch (error) {
+					this.error(error);
+				}
+			});
+		};
+		this.homey.on('retry', this.eventListenerRetry);
 
 		// add listener for new prices
 		const eventName = 'set_tariff_power';
@@ -88,10 +117,10 @@ class BatDriver extends Driver {
 
 	async onUninit() {
 		this.log('bat driver onUninit called');
-		this.homey.removeAllListeners('everyhour');
-		this.homey.removeAllListeners('set_tariff_power');
-		this.homey.removeAllListeners('set_tariff_gas');
-		this.homey.removeAllListeners('set_tariff_water');
+		if (this.eventListenerHour) this.homey.removeListener('everyhour', this.eventListenerHour);
+		if (this.eventListenerRetry) this.homey.removeListener('retry', this.eventListenerRetry);
+		const eventName = 'set_tariff_power';
+		if (this.eventListenerTariff) this.homey.removeListener(eventName, this.eventListenerTariff);
 		await setTimeoutPromise(3000);
 	}
 
@@ -102,7 +131,7 @@ class BatDriver extends Driver {
 			const randomId = crypto.randomBytes(3).toString('hex');
 			this.devices = [];
 
-			const allDevices = await this.homey.app.api.devices.getDevices({ $timeout: 20000 });
+			const allDevices = await this.homey.app.api.devices.getDevices({ $timeout: 15000 }).catch(this.error);
 			const keys = Object.keys(allDevices);
 			const allCaps = this.ds.deviceCapabilities;
 			keys.forEach((key) => {

@@ -28,12 +28,14 @@ const setTimeoutPromise = util.promisify(setTimeout);
 const dailyResetApps = [
 	'com.tibber',
 	'it.diederik.solar',
+	'com.toshiba',
 ];
 
 class SumMeterDriver extends Driver {
 
 	async onDriverInit() {
 		this.log('onDriverInit');
+
 		// add listener for hourly trigger
 		if (this.eventListenerHour) this.homey.removeListener('everyhour', this.eventListenerHour);
 		this.eventListenerHour = async () => {
@@ -59,12 +61,13 @@ class SumMeterDriver extends Driver {
 
 					// HOMEY-API device
 					// check if source device exists
-					const sourceDeviceExists = device.sourceDevice && device.sourceDevice.capabilitiesObj && (device.sourceDevice.available !== null);
+					const sourceDeviceExists = device.sourceDevice && device.sourceDevice.capabilitiesObj
+						&& Object.keys(device.sourceDevice.capabilitiesObj).length > 0 && (device.sourceDevice.available !== null);
 					if (!sourceDeviceExists) {
-						this.error(`Source device ${deviceName} is missing.`);
-						await device.setUnavailable('Source device is missing. Retry in 10 minutes.');
-						device.restartDevice(10 * 60 * 1000).catch(this.error); // restart after 10 minutes
-						return;
+						// console.log(deviceName, device.sourceDevice && device.sourceDevice.capabilitiesObj, device.sourceDevice && device.sourceDevice.available);
+						this.error(`Source device ${deviceName} is missing. Restarting now.`);
+						await device.setUnavailable('Source device is missing. Retrying ..').catch(this.error);
+						device.restartDevice(500).catch(this.error);
 					}
 
 					// METER_VIA_WATT device
@@ -88,7 +91,7 @@ class SumMeterDriver extends Driver {
 					// check if source device is available
 					if (!device.sourceDevice.available) {
 						this.error(`Source device ${deviceName} is unavailable.`);
-						// device.setUnavailable('Source device is unavailable');
+						// device.setUnavailable('Source device is unavailable').catch(this.error);
 						device.log('trying hourly poll', deviceName);
 						await device.pollMeter();
 						return;
@@ -108,7 +111,7 @@ class SumMeterDriver extends Driver {
 						device.log('doing hourly poll', deviceName);
 						await device.pollMeter();
 					}
-					await device.setAvailable();
+					await device.setAvailable().catch(this.error);
 				} catch (error) {
 					this.error(error);
 				}
@@ -141,14 +144,49 @@ class SumMeterDriver extends Driver {
 		};
 		this.homey.on(eventName, this.eventListenerTariff);
 
+		// add listener for 5 minute retry
+		if (this.eventListenerRetry) this.homey.removeListener('retry', this.eventListenerRetry);
+		this.eventListenerRetry = async () => {
+			const devices = this.getDevices();
+			devices.forEach(async (device) => {
+				try {
+					const deviceName = device.getName();
+					if (device.migrating || device.restarting) return;
+					if (!device.initReady) {
+						this.log(`${deviceName} Restarting now`);
+						// device.onInit();
+						device.restartDevice(500).catch(this.error);
+					}
+
+					// return for non homey-api devices
+					const settings = device.getSettings();
+					if (settings.homey_energy || settings.meter_via_flow) return;
+
+					// HOMEY-API device - check if source device exists
+					const sourceDeviceExists = device.sourceDevice && device.sourceDevice.capabilitiesObj
+						&& Object.keys(device.sourceDevice.capabilitiesObj).length > 0 && (device.sourceDevice.available !== null);
+					if (!sourceDeviceExists) {
+						// console.log(deviceName, device.sourceDevice && device.sourceDevice.capabilitiesObj, device.sourceDevice && device.sourceDevice.available);
+						this.error(`Source device ${deviceName} is missing. Restarting now.`);
+						await device.setUnavailable('Source device is missing. Retrying ..').catch(this.error);
+						device.restartDevice(500).catch(this.error);
+					}
+
+				} catch (error) {
+					this.error(error);
+				}
+			});
+		};
+		this.homey.on('retry', this.eventListenerRetry);
+
 	}
 
 	async onUninit() {
 		this.log('sum driver onUninit called');
-		this.homey.removeAllListeners('everyhour');
-		this.homey.removeAllListeners('set_tariff_power');
-		this.homey.removeAllListeners('set_tariff_gas');
-		this.homey.removeAllListeners('set_tariff_water');
+		if (this.eventListenerHour) this.homey.removeListener('everyhour', this.eventListenerHour);
+		if (this.eventListenerRetry) this.homey.removeListener('retry', this.eventListenerRetry);
+		const eventName = `set_tariff_${this.id}`;
+		if (this.eventListenerTariff) this.homey.removeListener(eventName, this.eventListenerTariff);
 		await setTimeoutPromise(3000);
 	}
 
@@ -163,7 +201,7 @@ class SumMeterDriver extends Driver {
 			const randomId = crypto.randomBytes(3).toString('hex');
 			this.devices = [];
 
-			const allDevices = await this.homey.app.api.devices.getDevices({ $timeout: 20000 });
+			const allDevices = await this.homey.app.api.devices.getDevices({ $timeout: 15000 }).catch(this.error);
 			const keys = Object.keys(allDevices);
 			const allCaps = this.ds.deviceCapabilities;
 			const reducedCaps = allCaps.filter((cap) => !cap.includes('meter_target'));
@@ -182,7 +220,7 @@ class SumMeterDriver extends Driver {
 						if (hasAllKeys) hasSourceCapGroup = true; // all relevant capabilities were found in the source device
 					});
 					if (!hasSourceCapGroup && !allDevices[key].capabilities.includes('measure_power')) {
-						this.log('incompatible source caps', allDevices[key].driverUri, allDevices[key].capabilities);
+						this.log('incompatible source caps', allDevices[key].driverId, allDevices[key].capabilities);
 						found = false;
 					}
 					useMeasureSource = !hasSourceCapGroup;
@@ -204,13 +242,13 @@ class SumMeterDriver extends Driver {
 						},
 						capabilities: allCaps,
 					};
-					if (dailyResetApps.some((appId) => allDevices[key].driverUri.includes(appId))) {
+					if (dailyResetApps.some((appId) => allDevices[key].driverId.includes(appId))) {
 						device.settings.homey_device_daily_reset = true;
 					}
 					if (allDevices[key].energyObj && allDevices[key].energyObj.cumulative) device.settings.distribution = 'el_nl_2023';
 					if (this.ds.driverId === 'gas') device.settings.distribution = 'gas_nl_2023';
 					if (this.ds.driverId === 'water') device.settings.distribution = 'linear';
-					if (!(allDevices[key].driverUri.includes('com.gruijter.powerhour')	// ignore own app devices
+					if (!(allDevices[key].driverId.includes('com.gruijter.powerhour')	// ignore own app devices
 						|| allDevices[key].driverId === 'homey')) this.devices.push(device);	// ignore homey virtual power device
 					if (device.settings.distribution === 'NONE') device.capabilities = reducedCaps;
 				}

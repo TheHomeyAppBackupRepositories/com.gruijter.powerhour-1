@@ -21,7 +21,7 @@ along with com.gruijter.powerhour.  If not, see <http://www.gnu.org/licenses/>.
 'use strict';
 
 const Homey = require('homey');
-const { HomeyAPIApp } = require('homey-api');
+const { HomeyAPI } = require('homey-api');
 
 // require('inspector').open(9229, '0.0.0.0', false);
 
@@ -40,20 +40,7 @@ class MyApp extends Homey.App {
 			// }
 
 			// register some listeners
-			process.on('unhandledRejection', (error) => {
-				this.error('unhandledRejection! ', error);
-			});
-			process.on('uncaughtException', (error) => {
-				this.error('uncaughtException! ', error);
-			});
 			this.homey
-				.on('unload', () => {
-					this.log('app unload called');
-					this.homey.removeAllListeners('everyhour');
-					this.homey.removeAllListeners('set_tariff_power');
-					this.homey.removeAllListeners('set_tariff_gas');
-					this.homey.removeAllListeners('set_tariff_water');
-				})
 				.on('memwarn', () => {
 					this.log('memwarn!');
 				});
@@ -63,11 +50,14 @@ class MyApp extends Homey.App {
 			// }, 1000 * 60 * 10);
 
 			// login to Homey API
-			this.api = new HomeyAPIApp({ homey: this.homey });
+			this.api = await HomeyAPI.createAppAPI({ homey: this.homey });
 
 			// start polling every whole hour
 			this.homey.setMaxListeners(20); // INCREASE LISTENERS
 			this.everyHour();
+
+			// retry missing source devices every 5 minutes
+			this.retry();
 
 			// register flows
 			this.registerFlowListeners();
@@ -80,6 +70,7 @@ class MyApp extends Homey.App {
 	async onUninit() {
 		this.log('app onUninit called');
 		this.homey.removeAllListeners('everyhour');
+		this.homey.removeAllListeners('retry');
 		this.homey.removeAllListeners('set_tariff_power');
 		this.homey.removeAllListeners('set_tariff_gas');
 		this.homey.removeAllListeners('set_tariff_water');
@@ -101,11 +92,19 @@ class MyApp extends Homey.App {
 		this.log('everyHour job started');
 	}
 
+	retry() {
+		this.homey.setInterval(async () => {
+			this.homey.emit('retry', true);
+		}, 5 * 60 * 1000);
+		this.log('retry job started');
+	}
+
 	registerFlowListeners() {
 
 		const autoComplete = async (query, driverId) => {
 			const driver = await this.homey.drivers.getDriver(driverId);
-			const devices = driver.getDevices().filter((device) => device.settings.meter_via_flow);
+			const devices = await driver.getDevices()
+				.filter((device) => device.settings.meter_via_flow);
 			const devicesMap = devices.map((device) => (
 				{
 					name: device.getName(),
