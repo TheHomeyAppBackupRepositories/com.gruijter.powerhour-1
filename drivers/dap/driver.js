@@ -1,5 +1,5 @@
 /*
-Copyright 2019 - 2023, Robin de Gruijter (gruijter@hotmail.com)
+Copyright 2019 - 2024, Robin de Gruijter (gruijter@hotmail.com)
 
 This file is part of com.gruijter.powerhour.
 
@@ -50,6 +50,8 @@ const driverSpecifics = {
 		'meter_price_next_day_highest',
 		'hour_next_day_highest',
 		'meter_price_next_day_avg',
+		'meter_rank_price_h0_this_day',
+		'meter_rank_price_h0_next_8h',
 	],
 };
 
