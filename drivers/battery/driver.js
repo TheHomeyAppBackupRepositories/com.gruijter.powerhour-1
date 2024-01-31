@@ -1,5 +1,5 @@
 /*
-Copyright 2019 - 2024, Robin de Gruijter (gruijter@hotmail.com)
+Copyright 2019 - 2023, Robin de Gruijter (gruijter@hotmail.com)
 
 This file is part of com.gruijter.powerhour.
 
@@ -34,12 +34,6 @@ const driverSpecifics = {
 		{
 			soc: 'battery_capacity', usagePower: 'measure_power.battery',	// Victron
 		},
-		{
-			soc: 'measure_battery', productionPower: 'measure_power.batt_in', usagePower: 'measure_power.batt_out',	// Sonnen
-		},
-		{
-			soc: 'measure_battery', productionPower: 'from_battery_capability', usagePower: 'to_battery_capability',	// Sonnen Batterie
-		},
 	],
 	deviceCapabilities: [
 		'measure_watt_avg', 'meter_kwh_stored',
@@ -49,7 +43,6 @@ const driverSpecifics = {
 		'meter_money_last_year', 'meter_money_this_year',
 		'meter_tariff',
 		'meter_power_hidden',
-		// 'roi_duration', // added only for HP2023
 	],
 };
 

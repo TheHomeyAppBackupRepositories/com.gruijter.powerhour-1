@@ -1,5 +1,5 @@
 /*
-Copyright 2019 - 2024, Robin de Gruijter (gruijter@hotmail.com)
+Copyright 2019 - 2023, Robin de Gruijter (gruijter@hotmail.com)
 
 This file is part of com.gruijter.powerhour.
 
@@ -23,7 +23,7 @@ const GenericDriver = require('../generic_sum_driver');
 
 const driverSpecifics = {
 	driverId: 'gas',
-	originDeviceCapabilities: ['meter_gas', 'meter_gas.reading', 'meter_gas.consumed', 'meter_gas.current'],
+	originDeviceCapabilities: ['meter_gas', 'meter_gas.reading', 'meter_power.consumed', 'meter_power.current'],
 	deviceCapabilities: ['meter_m3_last_hour', 'meter_m3_this_hour', 'meter_m3_last_day', 'meter_m3_this_day',
 		'meter_m3_last_month', 'meter_m3_this_month', 'meter_m3_last_year', 'meter_m3_this_year',
 		'meter_target_month_to_date', 'meter_target_year_to_date',

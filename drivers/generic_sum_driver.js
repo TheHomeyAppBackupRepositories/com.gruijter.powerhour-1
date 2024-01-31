@@ -1,5 +1,5 @@
 /*
-Copyright 2019 - 2024, Robin de Gruijter (gruijter@hotmail.com)
+Copyright 2019 - 2023, Robin de Gruijter (gruijter@hotmail.com)
 
 This file is part of com.gruijter.powerhour.
 
@@ -46,7 +46,7 @@ class SumMeterDriver extends Driver {
 					const deviceName = device.getName();
 					// devices that always need an immediate poll
 					// HOMEY_ENERGY device
-					if (device.getSettings().source_device_type.includes('Homey Energy')) {
+					if (device.getSettings().homey_energy) {
 						await device.pollMeter();
 						return;
 					}
@@ -54,7 +54,7 @@ class SumMeterDriver extends Driver {
 					// devices that might get udated without forced poll
 
 					// METER_VIA_FLOW device
-					if (device.getSettings().source_device_type === 'virtual via flow') {
+					if (device.getSettings().meter_via_flow) {
 						await device.updateMeterFromFlow(null);
 						return;
 					}
@@ -77,8 +77,7 @@ class SumMeterDriver extends Driver {
 					}
 
 					// check if listener or polling is on, otherwise restart device
-					const ignorePollSetting = (device.getSettings().source_device_type !== 'virtual via flow')
-						&& !device.getSettings().use_measure_source;
+					const ignorePollSetting = !device.getSettings().meter_via_flow && !device.getSettings().use_measure_source;
 					const pollingIsOn = !!device.getSettings().interval && device.intervalIdDevicePoll
 						&& (device.intervalIdDevicePoll._idleTimeout > 0); // polling is on
 					const listeningIsOn = Object.keys(device.capabilityInstances).length > 0; // listener is on
@@ -161,8 +160,7 @@ class SumMeterDriver extends Driver {
 
 					// return for non homey-api devices
 					const settings = device.getSettings();
-					if (settings.source_device_type !== 'Homey device') return;
-					// if (settings.homey_energy || settings.meter_via_flow) return;
+					if (settings.homey_energy || settings.meter_via_flow) return;
 
 					// HOMEY-API device - check if source device exists
 					const sourceDeviceExists = device.sourceDevice && device.sourceDevice.capabilitiesObj
@@ -192,40 +190,9 @@ class SumMeterDriver extends Driver {
 		await setTimeoutPromise(3000);
 	}
 
-	async onPair(session) {
-		this.log('Pairing of new device started');
-		session.setHandler('list_devices', () => this.discoverDevices());
-	}
-
-	async onRepair(session, device) {
-		this.log('Repairing of device started', device.getName());
-		let selectedDevices = [];
-		session.setHandler('list_devices', () => this.discoverDevices());
-		session.setHandler('list_devices_selection', (devices) => { selectedDevices = devices; });
-		session.setHandler('showView', async (viewId) => {
-			if (viewId === 'loading') {
-				// console.log('device selected', selectedDevices);
-				const [dev] = selectedDevices;
-				if (!dev || !dev.settings) {
-					await session.showView('done');
-					throw Error('Device is corrupt!');
-				}
-				const newSettings = {
-					homey_device_id: dev.settings.homey_device_id,
-					homey_device_name: dev.settings.homey_device_name,
-					source_device_type: dev.settings.source_device_type,
-					homey_energy: dev.settings.homey_energy,
-					use_measure_source: dev.settings.use_measure_source,
-					homey_device_daily_reset: dev.settings.homey_device_daily_reset,
-				};
-				this.log('old settings:', device.getSettings());
-				await device.setSettings(newSettings).catch(this.error);
-				await session.showView('done');
-				this.log('new settings:', device.getSettings());
-				device.restartDevice().catch(this.error);
-			}
-		});
-		session.setHandler('disconnect', () => { this.log('Repairing of device ended', device.getName());	});
+	async onPairListDevices() {
+		this.log('listing of devices started');
+		return this.discoverDevices();
 	}
 
 	// stuff to find Homey devices
@@ -358,7 +325,7 @@ class SumMeterDriver extends Driver {
 						homey_device_name: `VIRTUAL_METER_${randomId}`,
 						level: this.homey.app.manifest.version,
 						source_device_type: 'virtual via flow',
-						// meter_via_flow: true,
+						meter_via_flow: true,
 						tariff_update_group: 1,
 						distribution: 'NONE',
 					},

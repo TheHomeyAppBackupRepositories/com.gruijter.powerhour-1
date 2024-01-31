@@ -1,5 +1,5 @@
 /*
-Copyright 2019 - 2024, Robin de Gruijter (gruijter@hotmail.com)
+Copyright 2019 - 2023, Robin de Gruijter (gruijter@hotmail.com)
 
 This file is part of com.gruijter.powerhour.
 
@@ -104,7 +104,7 @@ class sumDevice extends GenericDevice {
 	async pollMeter() {
 
 		// poll a Homey Energy device
-		if (this.getSettings().source_device_type.includes('Homey Energy')) {
+		if (this.getSettings().homey_energy) {
 			const report = await this.homey.app.api.energy.getLiveReport().catch(this.error);
 			// console.log(this.getName(), this.settings.homey_energy);
 			// console.dir(report, { depth: null, colors: true });
