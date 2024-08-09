@@ -1,6 +1,6 @@
 /* eslint-disable global-require */
 /*
-Copyright 2019 - 2023, Robin de Gruijter (gruijter@hotmail.com)
+Copyright 2019 - 2024, Robin de Gruijter (gruijter@hotmail.com)
 
 This file is part of com.gruijter.powerhour.
 
@@ -39,12 +39,12 @@ class MyApp extends Homey.App {
 			// 	}
 			// }
 
-			// register some listeners
-			this.homey
-				.on('memwarn', () => {
-					this.log('memwarn!');
-				});
-			// // do garbage collection every 10 minutes
+			// // register some listeners
+			// this.homey
+			// 	.on('memwarn', () => {
+			// 		this.log('memwarn!');
+			// 	});
+			// do garbage collection every 10 minutes
 			// this.intervalIdGc = setInterval(() => {
 			// 	global.gc();
 			// }, 1000 * 60 * 10);
@@ -53,9 +53,8 @@ class MyApp extends Homey.App {
 			this.api = await HomeyAPI.createAppAPI({ homey: this.homey });
 
 			// start polling every whole hour
-			this.homey.setMaxListeners(20); // INCREASE LISTENERS
+			this.homey.setMaxListeners(30); // INCREASE LISTENERS
 			this.everyHour();
-
 			// retry missing source devices every 5 minutes
 			this.retry();
 
@@ -104,7 +103,7 @@ class MyApp extends Homey.App {
 		const autoComplete = async (query, driverId) => {
 			const driver = await this.homey.drivers.getDriver(driverId);
 			const devices = await driver.getDevices()
-				.filter((device) => device.settings.meter_via_flow);
+				.filter((device) => device.settings.source_device_type === 'virtual via flow');
 			const devicesMap = devices.map((device) => (
 				{
 					name: device.getName(),
@@ -157,6 +156,15 @@ class MyApp extends Homey.App {
 				.catch(this.error);
 		};
 
+		this._priceLowestAvgBefore = this.homey.flow.getDeviceTriggerCard('price_lowest_avg_before');
+		this._priceLowestAvgBefore.registerRunListener(async (args) => args.device.priceIsLowestAvgBefore(args));
+		this.triggerPriceLowestAvgBefore = (device, tokens, state) => {
+			this._priceLowestAvgBefore
+				.trigger(device, tokens, state)
+				// .then(this.log(device.getName(), tokens))
+				.catch(this.error);
+		};
+
 		this._priceHighest = this.homey.flow.getDeviceTriggerCard('price_highest');
 		this._priceHighest.registerRunListener(async (args) => args.device.priceIsHighest(args));
 		this.triggerPriceHighest = (device, tokens, state) => {
@@ -193,6 +201,15 @@ class MyApp extends Homey.App {
 				.catch(this.error);
 		};
 
+		this._priceHighestAvgBefore = this.homey.flow.getDeviceTriggerCard('price_highest_avg_before');
+		this._priceHighestAvgBefore.registerRunListener(async (args) => args.device.priceIsHighestAvgBefore(args));
+		this.triggerPriceHighestAvgBefore = (device, tokens, state) => {
+			this._priceHighestAvgBefore
+				.trigger(device, tokens, state)
+				// .then(this.log(device.getName(), tokens))
+				.catch(this.error);
+		};
+
 		this._priceBelowAvg = this.homey.flow.getDeviceTriggerCard('price_below_avg');
 		this._priceBelowAvg.registerRunListener(async (args) => args.device.priceIsBelowAvg(args));
 		this.triggerPriceBelowAvg = (device, tokens, state) => {
@@ -220,6 +237,33 @@ class MyApp extends Homey.App {
 				.catch(this.error);
 		};
 
+		this._newRoiStrategy = this.homey.flow.getDeviceTriggerCard('new_roi_strategy');
+		this._newRoiStrategy.registerRunListener(async (args, state) => args.minPriceDelta === state.minPriceDelta);
+		this.triggerNewRoiStrategy = (device, tokens, state) => {
+			this._newRoiStrategy
+				.trigger(device, tokens, state)
+				// .then(this.log(device.getName(), tokens, state))
+				.catch(this.error);
+		};
+
+		this._XOMStrategy = this.homey.flow.getDeviceTriggerCard('xom_strategy');
+		this._XOMStrategy.registerRunListener(async (args, state) => state); // always run
+		this.triggerXOMStrategy = (device, tokens, state) => {
+			this._XOMStrategy
+				.trigger(device, tokens, state)
+				// .then(this.log(device.getName(), tokens, state))
+				.catch(this.error);
+		};
+
+		this._newHour = this.homey.flow.getDeviceTriggerCard('new_hour');
+		this._newHour.registerRunListener(async (args, state) => state); // always run
+		this.triggerNewHour = (device, tokens, state) => {
+			this._newHour
+				.trigger(device, tokens, state)
+				// .then(this.log(device.getName(), tokens, state))
+				.catch(this.error);
+		};
+
 		// condition cards
 		const priceLowestCondition = this.homey.flow.getConditionCard('price_lowest');
 		priceLowestCondition.registerRunListener((args) => args.device.priceIsLowest(args));
@@ -235,6 +279,9 @@ class MyApp extends Homey.App {
 
 		const priceLowestBeforeCondition = this.homey.flow.getConditionCard('price_lowest_before');
 		priceLowestBeforeCondition.registerRunListener((args) => args.device.priceIsLowestBefore(args));
+
+		const priceLowestAvgBeforeCondition = this.homey.flow.getConditionCard('price_lowest_avg_before');
+		priceLowestAvgBeforeCondition.registerRunListener((args) => args.device.priceIsLowestAvgBefore(args));
 
 		const priceLowestAvgCondition = this.homey.flow.getConditionCard('price_lowest_avg');
 		priceLowestAvgCondition.registerRunListener((args) => args.device.priceIsLowestAvg(args));
@@ -257,6 +304,9 @@ class MyApp extends Homey.App {
 		const priceHighestAvgCondition = this.homey.flow.getConditionCard('price_highest_avg');
 		priceHighestAvgCondition.registerRunListener((args) => args.device.priceIsHighestAvg(args));
 
+		const priceHighestAvgBeforeCondition = this.homey.flow.getConditionCard('price_highest_avg_before');
+		priceHighestAvgBeforeCondition.registerRunListener((args) => args.device.priceIsHighestAvgBefore(args));
+
 		const priceAboveAvgCondition = this.homey.flow.getConditionCard('price_above_avg');
 		priceAboveAvgCondition.registerRunListener((args) => args.device.priceIsAboveAvg(args));
 
@@ -264,6 +314,13 @@ class MyApp extends Homey.App {
 		priceBattBestTradeCondition.registerRunListener((args) => args.device.priceBattBestTrade(args));
 
 		// action cards
+		const setXOMsettings = this.homey.flow.getActionCard('set_xom_settings');
+		setXOMsettings
+			.registerRunListener(async (args) => {
+				this.log('XOM settings set by flow:', args);
+				this.homey.settings.set('xomSettings', args);
+			});
+
 		const setTariffPower = this.homey.flow.getActionCard('set_tariff_power');
 		setTariffPower
 			.registerRunListener((args) => this.homey.emit('set_tariff_power', args));
@@ -275,6 +332,10 @@ class MyApp extends Homey.App {
 		const setTariffWater = this.homey.flow.getActionCard('set_tariff_water');
 		setTariffWater
 			.registerRunListener((args) => this.homey.emit('set_tariff_water', args));
+
+		const setTariffGroup = this.homey.flow.getActionCard('set_tariff_group');
+		setTariffGroup
+				.registerRunListener((args) => args.device.setTariffGroup(args.group).catch(this.error));
 
 		const setVariableMarkup = this.homey.flow.getActionCard('set_variable_markup');
 		setVariableMarkup
@@ -303,6 +364,10 @@ class MyApp extends Homey.App {
 		const pricesJSON = this.homey.flow.getActionCard('prices_json');
 		pricesJSON
 			.registerRunListener((args) => args.device.createPricesJSON(args.period));
+
+		const findRoiStrategy = this.homey.flow.getActionCard('find_roi_strategy');
+		findRoiStrategy
+			.registerRunListener((args) => args.device.findRoiStrategy(args, 'flow').catch(this.error));
 
 		const setMeterPower = this.homey.flow.getActionCard('set_meter_power');
 		setMeterPower

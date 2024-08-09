@@ -1,5 +1,5 @@
 /*
-Copyright 2019 - 2023, Robin de Gruijter (gruijter@hotmail.com)
+Copyright 2019 - 2024, Robin de Gruijter (gruijter@hotmail.com)
 
 This file is part of com.gruijter.powerhour.
 
@@ -21,6 +21,7 @@ along with com.gruijter.powerhour.  If not, see <http://www.gnu.org/licenses/>.s
 
 const ENTSOE = require('../../entsoe');
 const NP = require('../../nordpool');
+const STEKKER = require('../../stekker');
 
 const GenericDriver = require('../generic_dap_driver');
 
@@ -35,6 +36,8 @@ const driverSpecifics = {
 		'meter_price_h5',
 		'meter_price_h6',
 		'meter_price_h7',
+		'meter_price_last_month_avg',
+		'meter_price_this_month_avg',
 		'meter_price_this_day_avg',
 		'meter_price_next_8h_avg',
 		'meter_price_next_8h_lowest',
@@ -50,6 +53,8 @@ const driverSpecifics = {
 		'meter_price_next_day_highest',
 		'hour_next_day_highest',
 		'meter_price_next_day_avg',
+		'meter_rank_price_h0_this_day',
+		'meter_rank_price_h0_next_8h',
 	],
 };
 
@@ -59,7 +64,7 @@ class dapDriver extends GenericDriver {
 		this.ds = driverSpecifics;
 
 		// provide all data providers to the driver in order of presedence
-		this.ds.providers = [ENTSOE, NP];
+		this.ds.providers = [ENTSOE, NP, STEKKER];
 		this.ds.biddingZones = {};
 		this.ds.providers.forEach((Provider) => {
 			const api = new Provider();

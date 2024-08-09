@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.gruijter.powerhour",
-  "version": "5.7.5",
+  "version": "6.5.3",
   "compatibility": ">=8.0.0",
   "brandColor": "#df5020",
   "sdk": 3,
@@ -344,7 +344,7 @@
         "title": {
           "en": "The power changed",
           "nl": "Het vermogen is veranderd",
-          "de": "Der Verbrauch hat sich gändert",
+          "de": "Der Verbrauch hat sich geändert",
           "fr": "L'énergie a changé",
           "it": "L'energia è cambiata",
           "sv": "Strömmen ändrades",
@@ -412,6 +412,49 @@
           }
         ],
         "id": "meter_price_h0_changed"
+      },
+      {
+        "title": {
+          "en": "New price hour",
+          "nl": "Nieuw prijs-uur",
+          "de": "Neuer Stundenpreis"
+        },
+        "titleFormatted": {
+          "en": "New price hour starts",
+          "nl": "Nieuw prijs-uur begint",
+          "de": "Neuer Stundenpreis beginnt"
+        },
+        "highlight": true,
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=dap|dapg"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "H0",
+            "title": {
+              "en": "Hour",
+              "nl": "Uur",
+              "de": "Stunde"
+            },
+            "type": "number",
+            "example": 14
+          },
+          {
+            "name": "price",
+            "title": {
+              "en": "Price",
+              "nl": "Prijs",
+              "de": "Preis"
+            },
+            "type": "number",
+            "example": 0.2747
+          }
+        ],
+        "id": "new_hour"
       },
       {
         "title": {
@@ -497,6 +540,77 @@
           }
         ],
         "id": "new_prices"
+      },
+      {
+        "highlight": true,
+        "title": {
+          "en": "New smart ROI power available.",
+          "nl": "Nieuw smart ROI vermogen beschikbaar.",
+          "de": "Neue Smart ROI-Leistung verfügbar."
+        },
+        "titleFormatted": {
+          "en": "New smart ROI power available, with minimum [[minPriceDelta]]¤ profit per kWh.",
+          "nl": "Nieuwe smart ROI vermogen beschikbaar, met minimaal [[minPriceDelta]]¤ winst per kWh.",
+          "de": "Neue Smart ROI-Leistung verfügbar, mit minimalem [[minPriceDelta]]¤ Gewinn pro kWh."
+        },
+        "hint": {
+          "en": "The strategy is calculated using future hourly prices, the battery settings, and the set minimum profit per kWh.",
+          "nl": "De strategie wordt berekend met behulp van toekomstige prijzen, de batterij instellingen, en de ingestelde minimale winst per kWh.",
+          "de": "Die Strategie wird anhand der zukünftigen Stundenpreise, den Batterieeinstellungen und dem eingestellten minimalen Gewinn pro kWh berechnet."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=battery&capabilities=roi_duration"
+          },
+          {
+            "type": "number",
+            "name": "minPriceDelta",
+            "title": {
+              "en": "price delta",
+              "nl": "prijsverschil",
+              "de": "Preisdifferenz"
+            },
+            "min": 0,
+            "value": 0.08
+          }
+        ],
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Power",
+              "de": "Leistung"
+            }
+          },
+          {
+            "name": "duration",
+            "type": "number",
+            "title": {
+              "en": "Duration (minutes)",
+              "de": "Dauer (Minuten)"
+            }
+          },
+          {
+            "name": "endSoC",
+            "type": "number",
+            "title": {
+              "en": "SOC afterwards (%)",
+              "de": "SOC danach (%)"
+            }
+          },
+          {
+            "name": "scheme",
+            "type": "string",
+            "title": {
+              "en": "Scheme JSON",
+              "de": "Schema JSON"
+            }
+          }
+        ],
+        "id": "new_roi_strategy"
       },
       {
         "title": {
@@ -829,7 +943,7 @@
         },
         "titleFormatted": {
           "en": "The avg. price next [[hours]]H becomes highest within [[period]]",
-          "de": "Durchschn. Preis kommenden [[hours]]Std. wird am höchsten innerhalb [[period]]",
+          "de": "Durchschn. Preis kommende [[hours]]Std. wird am höchsten innerhalb [[period]] sein",
           "sv": "Det genomsnittliga priset kommande [[hours]]H blir högst inom [[period]]",
           "it": "Il prezzo medio a [[hours]]H diventa più alto entro [[period]]",
           "no": "Gjennomsnittprisen de neste [[hours]]H blir høyest innenfor [[period]]",
@@ -919,6 +1033,97 @@
       },
       {
         "title": {
+          "en": "The avg. price becomes highest before a certain time",
+          "nl": "De gem. prijs wordt het hoogst voor een bepaalde tijd",
+          "de": "Der durschn. Preis wird vor einer bestimmten Uhrzeit am höchsten sein"
+        },
+        "titleFormatted": {
+          "en": "The avg. price coming [[hours]]H becomes highest in the [[period]] hours before [[time]] o'clock",
+          "nl": "De gem. prijs komende [[hours]]U wordt het hoogst in de [[period]] uren voor [[time]] uur",
+          "de": "Der durschn. Preis der nächsten [[hours]]Std. wird der höchsten in den [[period]] Stunden vor [[time]] Uhr sein"
+        },
+        "highlight": true,
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=dap|dapg"
+          },
+          {
+            "type": "number",
+            "name": "hours",
+            "title": {
+              "en": "next hours",
+              "de": "der nächsten Std.",
+              "sv": "nästa H",
+              "it": "prossime h",
+              "no": "neste T",
+              "dk": "næste T",
+              "nl": "komende uren"
+            },
+            "placeholder": {
+              "en": "2-8"
+            },
+            "min": 2,
+            "max": 8,
+            "step": 1
+          },
+          {
+            "type": "number",
+            "name": "period",
+            "title": {
+              "en": "period",
+              "de": "Zeitraum",
+              "sv": "period",
+              "it": "periodo",
+              "no": "periode",
+              "nl": "periode"
+            },
+            "placeholder": {
+              "en": "2 - 23"
+            },
+            "min": 2,
+            "max": 23,
+            "step": 1
+          },
+          {
+            "type": "number",
+            "name": "time",
+            "title": {
+              "en": "time",
+              "de": "Zeit",
+              "sv": "tid",
+              "it": "tempo",
+              "no": "tid",
+              "nl": "tijd"
+            },
+            "placeholder": {
+              "en": "01 - 24"
+            },
+            "min": 1,
+            "max": 24,
+            "step": 1
+          }
+        ],
+        "tokens": [
+          {
+            "name": "meter_price_h0",
+            "title": {
+              "en": "Price now",
+              "de": "Preis aktuell",
+              "sv": "Pris just nu",
+              "it": "Prezzo attuale",
+              "no": "Pris nå",
+              "nl": "Prijs nu"
+            },
+            "type": "number",
+            "example": 27.5
+          }
+        ],
+        "id": "price_highest_avg_before"
+      },
+      {
+        "title": {
           "en": "The price becomes highest before a certain time",
           "de": "Preis wird für eine bestimmte Zeit am höchsten sein",
           "sv": "Priset blir högsta före en viss tidpunkt",
@@ -953,10 +1158,10 @@
               "nl": "periode"
             },
             "placeholder": {
-              "en": "2 - 12"
+              "en": "2 - 23"
             },
             "min": 2,
-            "max": 12,
+            "max": 23,
             "step": 1
           },
           {
@@ -1228,7 +1433,7 @@
         },
         "titleFormatted": {
           "en": "The avg. price [[hours]]H becomes lowest within [[period]]",
-          "de": "Durchschn. Preis kommenden [[hours]]Std. wird am niedrigsten innerhalb [[period]]",
+          "de": "Durchschn. Preis kommende [[hours]]Std. wird am niedrigsten innerhalb [[period]] sein",
           "sv": "Det genomsnittliga priset kommande [[hours]]H blir lägst inom [[period]]",
           "it": "Il prezzo medio di [[hours]]H diventa più basso entro [[period]]",
           "no": "Gjennomsnittsprisene de neste [[hours]]H blir lavest innen [[period]]",
@@ -1318,6 +1523,97 @@
       },
       {
         "title": {
+          "en": "The avg. price becomes lowest before a certain time",
+          "nl": "De gem. prijs wordt het laagst voor een bepaalde tijd",
+          "de": "Der durschn. Preis wird vor einer bestimmten Uhrzeit am niedrigsten sein"
+        },
+        "titleFormatted": {
+          "en": "The avg. price coming [[hours]]H becomes lowest in the [[period]] hours before [[time]] o'clock",
+          "nl": "De gem. prijs komende [[hours]]U wordt het laagst in de [[period]] uren voor [[time]] uur",
+          "de": "Der durschn. Preis der nächsten [[hours]]Std. wird der günstigste in den [[period]] Stunden vor [[time]] Uhr sein"
+        },
+        "highlight": true,
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=dap|dapg"
+          },
+          {
+            "type": "number",
+            "name": "hours",
+            "title": {
+              "en": "next hours",
+              "de": "der nächsten Std.",
+              "sv": "nästa H",
+              "it": "prossime h",
+              "no": "neste T",
+              "dk": "næste T",
+              "nl": "komende uren"
+            },
+            "placeholder": {
+              "en": "2-8"
+            },
+            "min": 2,
+            "max": 8,
+            "step": 1
+          },
+          {
+            "type": "number",
+            "name": "period",
+            "title": {
+              "en": "period",
+              "de": "Zeitraum",
+              "sv": "period",
+              "it": "periodo",
+              "no": "periode",
+              "nl": "periode"
+            },
+            "placeholder": {
+              "en": "2 - 23"
+            },
+            "min": 2,
+            "max": 23,
+            "step": 1
+          },
+          {
+            "type": "number",
+            "name": "time",
+            "title": {
+              "en": "time",
+              "de": "Zeit",
+              "sv": "tid",
+              "it": "tempo",
+              "no": "tid",
+              "nl": "tijd"
+            },
+            "placeholder": {
+              "en": "01 - 24"
+            },
+            "min": 1,
+            "max": 24,
+            "step": 1
+          }
+        ],
+        "tokens": [
+          {
+            "name": "meter_price_h0",
+            "title": {
+              "en": "Price now",
+              "de": "Preis aktuell",
+              "sv": "Pris just nu",
+              "it": "Prezzo attuale",
+              "no": "Pris nå",
+              "nl": "Prijs nu"
+            },
+            "type": "number",
+            "example": 27.5
+          }
+        ],
+        "id": "price_lowest_avg_before"
+      },
+      {
+        "title": {
           "en": "The price becomes lowest before a certain time",
           "de": "Preis wird für eine bestimmte Zeit am niedrigsten sein",
           "sv": "Priset blir lägst före en viss tidpunkt",
@@ -1352,10 +1648,10 @@
               "nl": "periode"
             },
             "placeholder": {
-              "en": "2 - 12"
+              "en": "2 - 23"
             },
             "min": 2,
-            "max": 12,
+            "max": 23,
             "step": 1
           },
           {
@@ -1471,6 +1767,69 @@
           }
         ],
         "id": "price_lowest_today"
+      },
+      {
+        "highlight": true,
+        "title": {
+          "en": "New XOM power available.",
+          "nl": "Nieuw XOM vermogen beschikbaar.",
+          "de": "Neuer XOM Strom verfügbar."
+        },
+        "titleFormatted": {
+          "en": "New XOM power available.",
+          "nl": "Nieuw XOM vermogen beschikbaar.",
+          "de": "Neuer XOM Strom verfügbar."
+        },
+        "hint": {
+          "en": "The battery power is calculated so that the cumulative usage will be close to the set X Watt. All available batteries are used pro rata. X defaults to 0 and can be set via the 'Set XOM' flow.",
+          "nl": "Het accu vermogen wordt zodanig berekend dat het cumulatieve verbruik de ingestelde X Watt nadert. Alle beschikbare accu's worden naar rato gebruikt. X is standaard 0 en kan via de 'Zet XOM' flow worden ingesteld.",
+          "de": "Die Batterieleistung wird so berechnet, dass sich der kumulierte Verbrauch dem festgelegten Wert X Watt nähert. Alle verfügbaren Batterien werden anteilig genutzt. X ist standardmäßig 0 und kann über den Fluss 'XOM einstellen' eingestellt werden."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=battery"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Power",
+              "de": "Leistung"
+            }
+          },
+          {
+            "type": "number",
+            "name": "x",
+            "title": {
+              "en": "XOM-target (W)",
+              "nl": "XOM-doel (W)",
+              "de": "XOM-Ziel (W)"
+            }
+          },
+          {
+            "type": "number",
+            "name": "smoothing",
+            "title": {
+              "en": "smoothing (%)",
+              "nl": "smoothing (%)",
+              "de": "Glättung (%)"
+            }
+          },
+          {
+            "type": "number",
+            "name": "minLoad",
+            "title": {
+              "en": "Minimum battery power (W)",
+              "nl": "Minimaal accu vermogen (W)",
+              "de": "Minimale Batteriekapazität (W)"
+            }
+          }
+        ],
+        "id": "xom_strategy"
       }
     ],
     "conditions": [
@@ -1557,9 +1916,9 @@
           "de": "Der Preis !{{ist|ist nicht}} der Beste zum [[strat]] des Batteriespeichers mit minimaler [[minPriceDelta]]€ Preisdifferenz."
         },
         "hint": {
-          "en": "The strategy is ao calculated using the known future hourly prices and the minimum price difference between highest and lowest prices.",
-          "nl": "De strategie wordt o.a. berekend met behulp van alle bekende toekomstige prijzen en het minimale prijsverschil tussen hoogste en laagste prijs.",
-          "de": "Die Strategie wird unter anderem anhand der bekannten zukünftigen Stundenpreise und der minimalen Preisdifferenz zwischen Höchst- und Tiefstpreis berechnet."
+          "en": "The basic ROI strategy is ao calculated using the known future hourly prices and the minimum price difference between highest and lowest prices.",
+          "nl": "De eenvoudige ROI strategie wordt o.a. berekend met behulp van alle bekende toekomstige prijzen en het minimale prijsverschil tussen hoogste en laagste prijs.",
+          "de": "Die einfache ROI-Strategie wird unter anderem anhand der bekannten zukünftigen Stundenpreise und der minimalen Preisdifferenz zwischen Höchst- und Tiefstpreis berechnet."
         },
         "highlight": true,
         "args": [
@@ -1913,6 +2272,82 @@
       },
       {
         "title": {
+          "en": "The avg. price !{{is|isn't}} highest before a certain time",
+          "nl": "De gem. prijs !{{is|is niet}} het hoogst voor een bepaalde tijd",
+          "de": "Der durschn. Preis !{{ist|ist nicht}} vor einer bestimmten Uhrzeit am höchsten"
+        },
+        "titleFormatted": {
+          "en": "The avg. price coming [[hours]]H !{{is|isn't}} highest in the [[period]] hours before [[time]] o'clock",
+          "nl": "De gem. prijs komende [[hours]]U !{{is|is niet}} het hoogst in de [[period]] uren voor [[time]] uur",
+          "de": "Der durschn. Preis der nächsten [[hours]]Std. !{{ist|ist nicht}} der höchsten in den [[period]] Stunden vor [[time]] Uhr"
+        },
+        "highlight": true,
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=dap|dapg"
+          },
+          {
+            "type": "number",
+            "name": "hours",
+            "title": {
+              "en": "next hours",
+              "de": "der nächsten Std.",
+              "sv": "nästa H",
+              "it": "prossime h",
+              "no": "neste T",
+              "dk": "næste T",
+              "nl": "komende uren"
+            },
+            "placeholder": {
+              "en": "2-8"
+            },
+            "min": 2,
+            "max": 8,
+            "step": 1
+          },
+          {
+            "type": "number",
+            "name": "period",
+            "title": {
+              "en": "period",
+              "de": "Zeitraum",
+              "sv": "period",
+              "it": "periodo",
+              "no": "periode",
+              "nl": "periode"
+            },
+            "placeholder": {
+              "en": "2 - 23"
+            },
+            "min": 2,
+            "max": 23,
+            "step": 1
+          },
+          {
+            "type": "number",
+            "name": "time",
+            "title": {
+              "en": "time",
+              "de": "Zeit",
+              "sv": "tid",
+              "it": "tempo",
+              "no": "tid",
+              "nl": "tijd"
+            },
+            "placeholder": {
+              "en": "01 - 24"
+            },
+            "min": 1,
+            "max": 24,
+            "step": 1
+          }
+        ],
+        "id": "price_highest_avg_before"
+      },
+      {
+        "title": {
           "en": "The price !{{is|isn't}} highest before a certain time",
           "no": "Prisen!{{er|er ikke}} høyest før en bestemt tid",
           "de": "Preis !{{ist|ist nicht}} der höchsten für eine bestimmte Zeit",
@@ -1950,10 +2385,10 @@
               "nl": "periode"
             },
             "placeholder": {
-              "en": "2 - 12"
+              "en": "2 - 23"
             },
             "min": 2,
-            "max": 12,
+            "max": 23,
             "step": 1
           },
           {
@@ -2000,11 +2435,13 @@
       {
         "title": {
           "en": "The price !{{is|isn't}} one of the highest the next hours",
-          "nl": "De prijs !{{is|is niet}} een van de hoogste de komende uren"
+          "nl": "De prijs !{{is|is niet}} een van de hoogste de komende uren",
+          "de": "Der Preis !{{ist|ist nicht}} einer der höchsten die nächsten Stunden"
         },
         "titleFormatted": {
           "en": "The price !{{is|isn't}} one of [[number]] highest in the next [[period]] hours",
-          "nl": "De prijs !{{is|is niet}} een van de [[number]] hoogste in de komende [[period]] uren"
+          "nl": "De prijs !{{is|is niet}} een van de [[number]] hoogste in de komende [[period]] uren",
+          "de": "Der Preis !{{ist|ist nicht}} einer der [[number]] höchsten in den nächsten [[period]] Stunden"
         },
         "highlight": true,
         "args": [
@@ -2330,6 +2767,82 @@
       },
       {
         "title": {
+          "en": "The avg. price !{{is|isn't}} lowest before a certain time",
+          "nl": "De gem. prijs !{{is|is niet}} het laagst voor een bepaalde tijd",
+          "de": "Der durschn. Preis !{{ist|ist nicht}} vor einer bestimmten Uhrzeit am niedrigsten"
+        },
+        "titleFormatted": {
+          "en": "The avg. price coming [[hours]]H !{{is|isn't}} lowest in the [[period]] hours before [[time]] o'clock",
+          "nl": "De gem. prijs komende [[hours]]U !{{is|is niet}} het laagst in de [[period]] uren voor [[time]] uur",
+          "de": "Der durschn. Preis der nächsten [[hours]]Std. !{{ist|ist nicht}} der günstigste in den [[period]] Stunden vor [[time]] Uhr"
+        },
+        "highlight": true,
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=dap|dapg"
+          },
+          {
+            "type": "number",
+            "name": "hours",
+            "title": {
+              "en": "next hours",
+              "de": "der nächsten Std.",
+              "sv": "nästa H",
+              "it": "prossime h",
+              "no": "neste T",
+              "dk": "næste T",
+              "nl": "komende uren"
+            },
+            "placeholder": {
+              "en": "2-8"
+            },
+            "min": 2,
+            "max": 8,
+            "step": 1
+          },
+          {
+            "type": "number",
+            "name": "period",
+            "title": {
+              "en": "period",
+              "de": "Zeitraum",
+              "sv": "period",
+              "it": "periodo",
+              "no": "periode",
+              "nl": "periode"
+            },
+            "placeholder": {
+              "en": "2 - 23"
+            },
+            "min": 2,
+            "max": 23,
+            "step": 1
+          },
+          {
+            "type": "number",
+            "name": "time",
+            "title": {
+              "en": "time",
+              "de": "Zeit",
+              "sv": "tid",
+              "it": "tempo",
+              "no": "tid",
+              "nl": "tijd"
+            },
+            "placeholder": {
+              "en": "01 - 24"
+            },
+            "min": 1,
+            "max": 24,
+            "step": 1
+          }
+        ],
+        "id": "price_lowest_avg_before"
+      },
+      {
+        "title": {
           "en": "The price !{{is|isn't}} lowest before a certain time",
           "no": "Prisen!{{er|er ikke}} lavest før en bestemt tid",
           "de": "Preis !{{ist|ist nicht}} der niedrigste für eine bestimmte Zeit",
@@ -2367,10 +2880,10 @@
               "nl": "periode"
             },
             "placeholder": {
-              "en": "2 - 12"
+              "en": "2 - 23"
             },
             "min": 2,
-            "max": 12,
+            "max": 23,
             "step": 1
           },
           {
@@ -2417,11 +2930,13 @@
       {
         "title": {
           "en": "The price !{{is|isn't}} one of the lowest the next hours",
-          "nl": "De prijs !{{is|is niet}} een van de laagste de komende uren"
+          "nl": "De prijs !{{is|is niet}} een van de laagste de komende uren",
+          "de": "Der Preis !{{ist|ist nicht}} einer der niedrigsten die nächsten Stunden"
         },
         "titleFormatted": {
           "en": "The price !{{is|isn't}} one of [[number]] lowest in the next [[period]] hours",
-          "nl": "De prijs !{{is|is niet}} een van de [[number]] laagste in de komende [[period]] uren"
+          "nl": "De prijs !{{is|is niet}} een van de [[number]] laagste in de komende [[period]] uren",
+          "de": "Der Preis !{{ist|ist nicht}} einer der [[number]] niedrigsten in den nächsten [[period]] Stunden"
         },
         "highlight": true,
         "args": [
@@ -2474,11 +2989,13 @@
       {
         "title": {
           "en": "The price !{{is|isn't}} one of the lowest in next known hours",
-          "nl": "De prijs !{{is|is niet}} een van de laagste de komende bekende uren"
+          "nl": "De prijs !{{is|is niet}} een van de laagste de komende bekende uren",
+          "de": "Der Preis !{{ist|ist nicht}} einer der niedrigsten in den nächsten Stunden"
         },
         "titleFormatted": {
           "en": "The price !{{is|isn't}} one of [[number]] lowest in the next known hours",
-          "nl": "De prijs !{{is|is niet}} een van de [[number]] laagste in de komende bekende uren"
+          "nl": "De prijs !{{is|is niet}} een van de [[number]] laagste in de komende bekende uren",
+          "de": "Der Preis !{{ist|ist nicht}} einer der [[number]] niedrigsten in den nächsten bekannten Stunden"
         },
         "highlight": true,
         "args": [
@@ -2500,10 +3017,10 @@
               "nl": "aantal"
             },
             "placeholder": {
-              "en": "1 - 5"
+              "en": "1 - 20"
             },
             "min": 1,
-            "max": 5,
+            "max": 20,
             "step": 1
           }
         ],
@@ -2559,6 +3076,77 @@
     ],
     "actions": [
       {
+        "highlight": true,
+        "title": {
+          "en": "Calculate the best smart ROI power.",
+          "nl": "Bereken het beste smart ROI vermogen.",
+          "de": "Berechne die beste Smart ROI-Leistung."
+        },
+        "titleFormatted": {
+          "en": "Calculate the best smart ROI power, with minimum [[minPriceDelta]]¤ profit per kWh.",
+          "nl": "Bereken het beste smart ROI vermogen, met minimaal [[minPriceDelta]]¤ winst per kWh.",
+          "de": "Berechne die beste Smart ROI-Leistung, mit minimalem [[minPriceDelta]]¤ Gewinn pro kWh."
+        },
+        "hint": {
+          "en": "The strategy is calculated using future hourly prices, the battery settings, and the set minimum profit per kWh.",
+          "nl": "De strategie wordt berekend met behulp van toekomstige prijzen, de batterij instellingen, en de ingestelde minimale winst per kWh.",
+          "de": "Die Strategie wird anhand der zukünftigen Stundenpreise, den Batterieeinstellungen und dem eingestellten minimalen Gewinn pro kWh berechnet."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=battery&capabilities=roi_duration"
+          },
+          {
+            "type": "number",
+            "name": "minPriceDelta",
+            "title": {
+              "en": "price delta",
+              "nl": "prijsverschil",
+              "de": "Preisdifferenz"
+            },
+            "min": 0,
+            "value": 0.1
+          }
+        ],
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Power",
+              "de": "Leistung"
+            }
+          },
+          {
+            "name": "duration",
+            "type": "number",
+            "title": {
+              "en": "Duration (minutes)",
+              "de": "Dauer (Minuten)"
+            }
+          },
+          {
+            "name": "endSoC",
+            "type": "number",
+            "title": {
+              "en": "SOC afterwards (%)",
+              "de": "SOC danach (%)"
+            }
+          },
+          {
+            "name": "scheme",
+            "type": "string",
+            "title": {
+              "en": "Scheme JSON",
+              "de": "Schema JSON"
+            }
+          }
+        ],
+        "id": "find_roi_strategy"
+      },
+      {
         "title": {
           "en": "Reset the Min/Max values",
           "de": "Zurücksetzen der Min/Max Werte",
@@ -2581,10 +3169,12 @@
       },
       {
         "title": {
-          "en": "Provide prices JSON"
+          "en": "Provide prices JSON",
+          "de": "Preise bereitstellen (JSON)"
         },
         "titleFormatted": {
-          "en": "Provide prices JSON for [[period]]"
+          "en": "Provide prices JSON for [[period]]",
+          "de": "Preise für [[period]] bereitstellen (JSON)"
         },
         "highlight": true,
         "args": [
@@ -2631,7 +3221,8 @@
                 "id": "next_hours",
                 "label": {
                   "en": "Next hours",
-                  "nl": "Komende uren"
+                  "nl": "Komende uren",
+                  "de": "Kommende Stunden"
                 }
               }
             ]
@@ -2745,10 +3336,12 @@
       },
       {
         "title": {
-          "en": "Set a new Time Of Day markup"
+          "en": "Set a new Time Of Day markup",
+          "de": "Neuen Time Of Day Aufschlag setzen"
         },
         "titleFormatted": {
-          "en": "Set Time Of Day markup to [[value]]"
+          "en": "Set Time Of Day markup to [[value]]",
+          "de": "Time Of Day Aufschlag auf [[value]] setzen"
         },
         "args": [
           {
@@ -2768,10 +3361,12 @@
       },
       {
         "title": {
-          "en": "Set a new weekend markup"
+          "en": "Set a new weekend markup",
+          "de": "Neuen Wochenendaufschlag setzen"
         },
         "titleFormatted": {
-          "en": "Set weekend markup to [[value]]"
+          "en": "Set weekend markup to [[value]]",
+          "de": "Wochenendaufschlag auf [[value]] setzen"
         },
         "args": [
           {
@@ -3003,6 +3598,37 @@
       },
       {
         "title": {
+          "en": "Set a new tariff update group",
+          "nl": "Stel een nieuwe tarief update groep in"
+        },
+        "titleFormatted": {
+          "en": "Set tariff update group to [[group]]",
+          "nl": "Stel tarief update groep in op [[group]]"
+        },
+        "highlight": true,
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=power|gas|water"
+          },
+          {
+            "name": "group",
+            "type": "number",
+            "placeholder": {
+              "en": "Update group",
+              "nl": "Update groep"
+            },
+            "required": true,
+            "min": 1,
+            "max": 10,
+            "step": 1
+          }
+        ],
+        "id": "set_tariff_group"
+      },
+      {
+        "title": {
           "en": "Set a new energy tariff",
           "de": "Neuen Stromtarif festlegen",
           "sv": "Sätt en ny energitaxa",
@@ -3147,6 +3773,75 @@
           }
         ],
         "id": "set_variable_markup"
+      },
+      {
+        "highlight": true,
+        "title": {
+          "en": "Set values for Battery XOM flow.",
+          "nl": "Zet waarden voor Batterij XOM flow.",
+          "de": "Werte für Batterie XOM Flow festlegen."
+        },
+        "titleFormatted": {
+          "en": "Set Battery XOM flows. XOM-target: [[x]]W, smoothing: [[smoothing]]%, min. battery load: [[minLoad]]W.",
+          "nl": "Zet Batterij XOM flows. XOM-doel: [[x]]W, smoothing: [[smoothing]]%, min. accu vermogen: [[minLoad]]W.",
+          "de": "Batterie XOM Flow festlegen. XOM-Ziel: [[x]]W, Glättung: [[smoothing]]%, min. Ladeleistung: [[minLoad]]W."
+        },
+        "hint": {
+          "en": "Settings for Battery XOM flows. The battery power is calculated so that the cumulative usage will be close to the set XOM-target. Low smoothing gives faster response to short power peaks. Use 50% or higher for a more stable control.",
+          "nl": "Instellingen tbv thuisbatterij XOM flows. Het accu vermogen wordt zodanig berekend dat het cumulatieve verbruik het ingestelde XOM-doel nadert. Lage smoothing geeft een snellere respons op korte vermogenpieken. Gebruik 50% of hoger voor een stabielere sturing.",
+          "de": "Einstellungen für Batterie-XOM Flows. Die Batteriekapazität wird so berechnet, dass der kumulierte Verbrauch in der Nähe des eingestellten XOM-Ziels liegt. Eine niedrige Glättung ermöglicht eine schnellere Reaktion auf kurze Leistungsspitzen. Verwenden Sie 50 % oder mehr für eine stabilere Regelung."
+        },
+        "args": [
+          {
+            "type": "number",
+            "name": "x",
+            "title": {
+              "en": "XOM-target (W)",
+              "nl": "XOM-doel (W)",
+              "de": "XOM-Ziel (W)"
+            },
+            "placeholder": {
+              "en": "default 0W",
+              "nl": "standaard 0W",
+              "de": "Standardwert 0 W"
+            },
+            "value": 0
+          },
+          {
+            "type": "number",
+            "name": "smoothing",
+            "title": {
+              "en": "smoothing (%)",
+              "nl": "smoothing (%)",
+              "de": "Glättung (%)"
+            },
+            "placeholder": {
+              "en": "30 - 100 %",
+              "nl": "30 - 100 %",
+              "de": "30 - 100 %"
+            },
+            "min": 25,
+            "max": 100,
+            "value": 50
+          },
+          {
+            "type": "number",
+            "name": "minLoad",
+            "title": {
+              "en": "Minimum battery power (W)",
+              "nl": "Minimaal accu vermogen (W)",
+              "de": "Minimale Batteriekapazität (W)"
+            },
+            "placeholder": {
+              "en": "default 50W",
+              "nl": "standaard 50W",
+              "de": "Standardwert 50 W"
+            },
+            "min": 0,
+            "value": 50
+          }
+        ],
+        "id": "set_xom_settings"
       }
     ]
   },
@@ -3295,50 +3990,6 @@
               }
             },
             {
-              "id": "chargePower",
-              "type": "number",
-              "label": {
-                "en": "Charging power (W)",
-                "nl": "Laadvermogen (W)",
-                "de": "Ladeleistung (W)"
-              },
-              "value": 2150,
-              "min": 0,
-              "decimals": 0,
-              "hint": {
-                "en": "The power at which the battery is charged in Watts.",
-                "nl": "Het vermogen waarmee de batterij wordt geladen in Watt.",
-                "de": "Die Leistung in Watt, mit der die Batterie geladen wird."
-              }
-            },
-            {
-              "id": "dischargePower",
-              "type": "number",
-              "label": {
-                "en": "Discharging power (W)",
-                "nl": "Ontlaadvermogen (W)",
-                "de": "Entladungsleistung (W)"
-              },
-              "value": 1750,
-              "min": 0,
-              "decimals": 0,
-              "hint": {
-                "en": "The power at which the battery is discharged in Watts.",
-                "nl": "Het vermogen waarmee de batterij wordt ontladen in Watt.",
-                "de": "Die Leistung in Watt, mit der die Batterie entladen wird."
-              }
-            }
-          ]
-        },
-        {
-          "type": "group",
-          "label": {
-            "en": "(Dis)charge Power correction",
-            "nl": "(Ont)laadvermogen correctie",
-            "de": "(Ent-)Ladeleistung Korrektur"
-          },
-          "children": [
-            {
               "id": "ownPowerStandby",
               "type": "number",
               "label": {
@@ -3354,59 +4005,287 @@
                 "nl": "Eigen verbruik niet gerapporteerd door de batterij.",
                 "de": "Eigenverbrauch, der von der Batterie nicht gemeldet wird."
               }
-            },
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Maximum power values",
+            "nl": "Maximale vermogens waarden",
+            "de": "Maximale Leistungswerte"
+          },
+          "children": [
             {
-              "id": "ownPowerOn",
+              "id": "chargePower",
               "type": "number",
               "label": {
-                "en": "Own use when (dis)charging (W)",
-                "nl": "Eigen verbruik bij (ont)laden (W)",
-                "de": "Eigenverbrauch bei (Ent-)Ladung (W)."
+                "en": "Max. charging power (W)",
+                "nl": "Max. laadvermogen (W)",
+                "de": "Max. Ladeleistung (W)"
               },
-              "value": 35,
+              "value": 2200,
               "min": 0,
-              "decimals": 1,
+              "decimals": 0,
               "hint": {
-                "en": "Own power usage not reported by the battery.",
-                "nl": "Eigen verbruik niet gerapporteerd door de batterij.",
-                "de": "Eigenverbrauch, der von der Batterie nicht gemeldet wird."
+                "en": "The maximum power at which the battery can be charged.",
+                "nl": "Het maximale vermogen waarmee de batterij kan worden geladen.",
+                "de": "Die maximale Leistung, mit der die Batterie geladen werden kann."
               }
             },
             {
               "id": "chargeLoss",
               "type": "number",
               "label": {
-                "en": "Extra loss during charging (%)",
-                "nl": "Extra verlies tijdens laden (%)",
-                "de": "Zusätzlicher Verlust beim Laden (%)"
+                "en": "Max. charging loss (%)",
+                "nl": "Max. laden verlies (%)",
+                "de": "Max. Ladeverlust (%)"
               },
               "min": 0,
               "max": 30,
-              "value": 9.7,
+              "value": 10,
               "decimals": 2,
               "hint": {
-                "en": "Extra power loss not reported by the battery.",
-                "nl": "Extra verlies niet gerapporteerd door de batterij.",
-                "de": "Zusätzlicher Verlust, der von der Batterie nicht gemeldet wird."
+                "en": "Conversion loss.",
+                "nl": "Conversie verlies.",
+                "de": "Konvertierungsverlust."
+              }
+            },
+            {
+              "id": "dischargePower",
+              "type": "number",
+              "label": {
+                "en": "Max. discharging power (W)",
+                "nl": "Max. ontlaadvermogen (W)",
+                "de": "Max. Entladungsleistung (W)"
+              },
+              "value": 1700,
+              "min": 0,
+              "decimals": 0,
+              "hint": {
+                "en": "The maximum power at which the battery can be discharged.",
+                "nl": "Het maximale vermogen waarmee de batterij kan worden ontladen.",
+                "de": "Die maximale Leistung in Watt, mit der die Batterie entladen werden kann."
               }
             },
             {
               "id": "dischargeLoss",
               "type": "number",
               "label": {
-                "en": "Extra loss during discharging (%)",
-                "nl": "Extra verlies tijdens ontladen (%)",
-                "de": "Zusätzlicher Verlust beim Entladen (%)"
+                "en": "Max. discharging loss (%)",
+                "nl": "Max. ontladen verlies (%)",
+                "de": "Max. Entladeverlust (%)"
               },
               "min": 0,
               "max": 30,
-              "value": 7.7,
+              "value": 8,
               "decimals": 2,
               "hint": {
-                "en": "Extra power loss not reported by the battery.",
-                "nl": "Extra verlies niet gerapporteerd door de batterij.",
-                "de": "Zusätzlicher Verlust, der von der Batterie nicht gemeldet wird."
+                "en": "Conversion loss.",
+                "nl": "Conversie verlies.",
+                "de": "Konvertierungsverlust."
               }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Efficient power values",
+            "nl": "Efficiente vermogens waarden",
+            "de": "Effiziente Leistungswerte"
+          },
+          "children": [
+            {
+              "id": "chargePowerEff",
+              "type": "number",
+              "label": {
+                "en": "Eff. charging power (W)",
+                "nl": "Eff. laadvermogen (W)",
+                "de": "Eff. Ladeleistung (W)"
+              },
+              "value": 1050,
+              "min": 0,
+              "decimals": 0,
+              "hint": {
+                "en": "The most efficient power at which the battery can be charged. Set to 0 to ignore this setting.",
+                "nl": "Het meest efficiente vermogen waarmee de batterij kan worden geladen. Stel op 0 in om deze instelling te negeren.",
+                "de": "Die effizienteste Leistung, mit der die Batterie geladen werden kann. Auf 0 setzen, um diese Einstellung zu ignorieren"
+              }
+            },
+            {
+              "id": "chargeLossEff",
+              "type": "number",
+              "label": {
+                "en": "Eff. charging loss (%)",
+                "nl": "Eff. laden verlies (%)",
+                "de": "Eff. Ladeverlust (%)"
+              },
+              "min": 0,
+              "max": 30,
+              "value": 5,
+              "decimals": 2,
+              "hint": {
+                "en": "Conversion loss.",
+                "nl": "Conversie verlies.",
+                "de": "Konvertierungsverlust."
+              }
+            },
+            {
+              "id": "dischargePowerEff",
+              "type": "number",
+              "label": {
+                "en": "Eff. discharging power (W)",
+                "nl": "Eff. ontlaadvermogen (W)",
+                "de": "Eff. Entladungsleistung (W)"
+              },
+              "value": 765,
+              "min": 0,
+              "decimals": 0,
+              "hint": {
+                "en": "The most efficient power at which the battery can be discharged.",
+                "nl": "Het meest efficiente vermogen waarmee de batterij kan worden ontladen.",
+                "de": "Die effizienteste Leistung in Watt, mit der die Batterie entladen werden kann."
+              }
+            },
+            {
+              "id": "dischargeLossEff",
+              "type": "number",
+              "label": {
+                "en": "Eff. discharging loss (%)",
+                "nl": "Eff. ontladen verlies (%)",
+                "de": "Eff. Entladeverlust (%)"
+              },
+              "min": 0,
+              "max": 30,
+              "value": 4,
+              "decimals": 2,
+              "hint": {
+                "en": "Conversion loss.",
+                "nl": "Conversie verlies.",
+                "de": "Konvertierungsverlust."
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Additional power values",
+            "nl": "Aanvullende vermogens waarden",
+            "de": "Zusätzliche Leistungswerte"
+          },
+          "children": [
+            {
+              "id": "chargePower3",
+              "type": "number",
+              "label": {
+                "en": "Additional charging power (W)",
+                "nl": "Aanvullend laadvermogen (W)",
+                "de": "Zusätzliche Ladeleistung (W)"
+              },
+              "value": 1791,
+              "min": 0,
+              "decimals": 0,
+              "hint": {
+                "en": "Additional power at which the battery can be charged in Watts.",
+                "nl": "Aanvullend vermogen waarmee de batterij kan worden geladen in Watt.",
+                "de": "Zusätzliche Leistung, mit der die Batterie geladen werden kann."
+              }
+            },
+            {
+              "id": "chargeLoss3",
+              "type": "number",
+              "label": {
+                "en": "Additional charging loss (%)",
+                "nl": "Aanvullend laden verlies (%)",
+                "de": "Zusätzlicher Ladeverlust (%)"
+              },
+              "min": 0,
+              "max": 30,
+              "value": 7,
+              "decimals": 2,
+              "hint": {
+                "en": "Conversion loss.",
+                "nl": "Conversie verlies.",
+                "de": "Konvertierungsverlust."
+              }
+            },
+            {
+              "id": "dischargePower3",
+              "type": "number",
+              "label": {
+                "en": "Additional discharging power (W)",
+                "nl": "Aanvullend ontlaadvermogen (W)",
+                "de": "Zusätzliche Entladungsleistung (W)"
+              },
+              "value": 1179,
+              "min": 0,
+              "decimals": 0,
+              "hint": {
+                "en": "Additional power at which the battery can be discharged.",
+                "nl": "Aanvullend vermogen waarmee de batterij kan worden ontladen.",
+                "de": "Zusätzliche Leistung, mit der die Batterie entladen werden kann."
+              }
+            },
+            {
+              "id": "dischargeLoss3",
+              "type": "number",
+              "label": {
+                "en": "Additional discharging loss (%)",
+                "nl": "Aanvullend ontladen verlies (%)",
+                "de": "Zusätzlicher Entladeverlust (%)"
+              },
+              "min": 0,
+              "max": 30,
+              "value": 6,
+              "decimals": 2,
+              "hint": {
+                "en": "Conversion loss.",
+                "nl": "Conversie verlies.",
+                "de": "Konvertierungsverlust."
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Advanced ROI settings (HP2023)",
+            "nl": "Geavanceerde ROI instellingen (HP2023)",
+            "de": "Erweiterte ROI Einstellungen (HP2023)"
+          },
+          "children": [
+            {
+              "id": "roiEnable",
+              "type": "checkbox",
+              "label": {
+                "en": "Enable advanced ROI",
+                "nl": "ROI functie aanzetten",
+                "de": "ROI Funktion aktivieren"
+              },
+              "hint": {
+                "en": "Advanced ROI flows are only available on HP2023!",
+                "nl": "Geavanceerde ROI flows zijn alleen beschikbaar op HP2023!",
+                "de": "Erweiterte ROI Flows sind nur auf dem HP2023 verfügbar!"
+              },
+              "value": false
+            },
+            {
+              "id": "roiMinProfit",
+              "type": "number",
+              "label": {
+                "en": "Graph minimum profit per kWh",
+                "nl": "Grafiek minimale winst per kWh",
+                "de": "Grafik Mindestgewinn pro kWh"
+              },
+              "hint": {
+                "en": "The strategy graph is calculated using future hourly prices, the battery settings, and the set minimum profit per kWh. (HP2023 Only!)",
+                "nl": "De strategie grafiek wordt berekend met behulp van toekomstige prijzen, de batterij instellingen, en de ingestelde minimale winst per kWh. (Alleen HP2023!)",
+                "de": "Die Strategiegrafik wird anhand der zukünftigen Preise, der Batterieeinstellungen und des eingestellten Mindestgewinns pro kWh berechnet. (Nur HP2023!)"
+              },
+              "value": 0.08,
+              "min": 0
             }
           ]
         },
@@ -3439,6 +4318,58 @@
               "min": 0,
               "max": 10,
               "step": 1
+            },
+            {
+              "id": "currency",
+              "type": "text",
+              "label": {
+                "en": "Currency unit display",
+                "de": "Währungseinheit",
+                "sv": "Visning av valutaenhet",
+                "it": "Visualizzazione unità valuta",
+                "no": "Visning av valutaenhet",
+                "fr": "Affichage de l'unité monétaire",
+                "dk": "Visning af valutaenhed",
+                "nl": "Weergave geldeenheid"
+              },
+              "value": "€",
+              "hint": {
+                "en": "The unit displayed as currency, e.g. €, £, EUR, SER, NOK, DKK, CHF. Leave empty to use the default €.",
+                "de": "Die als Währung angezeigte Einheit, z.B. €, £, EUR, SER, NOK, DKK, CHF. Leer lassen, um die Standardeinheit € zu verwenden.",
+                "sv": "Enheten som visas som valuta, t.ex. €, £, EUR, SER, NOK, DKK, CHF. Lämna tomt för att använda standardvärdet €.",
+                "it": "L'unità mostrata come valuta, es. €, £, EUR, SER, NOK, DKK, CHF. Lasciare vuoto per utilizzare € di default.",
+                "no": "Valutaenheten vises som f.eks. €, £, EUR, SER, NOK, DKK, CHF. La stå blank for å bruke default €.",
+                "fr": "Unité affichée comme devise, ex. €, £, EUR, SER, NOK, DKK, CHF. Laisser vide pour utiliser € par défaut",
+                "dk": "Valutaenheden vises f.eks. €, £, EUR, SER, NOK, DKK, CHF. Lad denne stå blank for at bruge standard €.",
+                "nl": "De weergegeven eenheid voor geld, bijv. €, £, EUR, SER, NOK, DKK, CHF. Laat leeg om de standaard € te gebruiken."
+              }
+            },
+            {
+              "id": "decimals",
+              "type": "number",
+              "label": {
+                "en": "Currency decimals",
+                "de": "Anzahl Dezimalstellen",
+                "sv": "Valuta decimaler",
+                "it": "Decimali valuta",
+                "no": "Valute desimaler",
+                "fr": "Décimales devise",
+                "dk": "Valuta decimaler",
+                "nl": "Geld decimalen"
+              },
+              "value": 2,
+              "min": 0,
+              "max": 8,
+              "hint": {
+                "en": "The number of decimals to use for price.",
+                "de": "Die Anzahl der Dezimalstellen für den Preis.",
+                "sv": "Antalet decimaler som ska användas för pris.",
+                "it": "Il numero di decimali da utilizzare per il prezzo.",
+                "no": "Antall prisdesimaler",
+                "fr": "Nombre de décimales à utiliser pour le tarif",
+                "dk": "Antallet af decimaler, der bruges til prisen",
+                "nl": "Het aantal decimalen voor prijs."
+              }
             },
             {
               "id": "meter_money_this_month",
@@ -3534,6 +4465,52 @@
                 "no": "Kostnad forrige år. Blir automatisk oppdatert",
                 "fr": "Valeur monétaire de l'année dernière. Elle est mise à jour automatiquement",
                 "nl": "Geldwaarde van het vorige jaar. Wordt automatisch geupdated."
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Meter readings",
+            "de": "Zählerstände",
+            "sv": "Mätaravläsningar",
+            "it": "Letture contatore",
+            "no": "Meterverdier",
+            "fr": "Lecture compteur",
+            "nl": "Meter waarden"
+          },
+          "children": [
+            {
+              "id": "meter_kwh_charging",
+              "type": "number",
+              "label": {
+                "en": "Charging Total (kWh)",
+                "nl": "Laden Totaal (kWh)",
+                "de": "Aufladung Gesamt (kWh)"
+              },
+              "min": 0,
+              "value": 0,
+              "hint": {
+                "en": "This value is automatically generated and updated once an hour. It is advised not to change this value, unless you need to.",
+                "nl": "Deze waarde wordt automatisch gegenereerd en één keer per uur bijgewerkt. Het wordt aanbevolen deze waarde niet te wijzigen, tenzij dit noodzakelijk is.",
+                "de": "Dieser Wert wird automatisch generiert und einmal pro Stunde aktualisiert. Es wird empfohlen, diesen Wert nicht zu ändern, es sei denn, dies ist erforderlich."
+              }
+            },
+            {
+              "id": "meter_kwh_discharging",
+              "type": "number",
+              "label": {
+                "en": "Discharging Total (kWh)",
+                "nl": "Ontladen Totaal (kWh)",
+                "de": "Entladung Gesamt (kWh)"
+              },
+              "min": 0,
+              "value": 0,
+              "hint": {
+                "en": "This value is automatically generated and updated once an hour. It is advised not to change this value, unless you need to.",
+                "nl": "Deze waarde wordt automatisch gegenereerd en één keer per uur bijgewerkt. Het wordt aanbevolen deze waarde niet te wijzigen, tenzij dit noodzakelijk is.",
+                "de": "Dieser Wert wird automatisch generiert und einmal pro Stunde aktualisiert. Es wird empfohlen, diesen Wert nicht zu ändern, es sei denn, dies ist erforderlich."
               }
             }
           ]
@@ -3893,6 +4870,31 @@
               }
             },
             {
+              "id": "variableMarkupAbsPrice",
+              "type": "number",
+              "label": {
+                "en": "Variable markup (%) @abs. price",
+                "de": "Variabler Aufschlag (%) @abs. Preis",
+                "sv": "Variabelt påslag (%) @abs.pris",
+                "it": "Aumento variabile (%) @prezzo assoluto",
+                "no": "Variabel påslag (%) @abs.pris",
+                "fr": "Augmentation variable (%) @prix absolu",
+                "dk": "Variabelt gebyr (%) @abs.pris",
+                "nl": "Variabele opslag (%) @abs. prijs"
+              },
+              "value": 0,
+              "hint": {
+                "en": "Enter the percentage with which the |net price| must be increased. This markup is always positive, even for negative market prices.",
+                "de": "Geben Sie den Prozentsatz ein, um den der |Nettopreis| erhöht werden muss. Dieser Aufschlag ist immer positiv, auch bei negativen Marktpreisen.",
+                "sv": "Ange den procentsats med vilken |nettopriset| måste ökas. Denna marginal är alltid positiv, även för negativa marknadspriser.",
+                "it": "Inserisci la percentale con cui il |prezzo netto| deve essere aumentato. Questo ricarico è sempre positivo, anche per prezzi di mercato negativi.",
+                "no": "Skriv inn prosentsatsen som |nettoprisen| må økes med. Denne marginen er alltid positiv, selv for negative markedspriser.",
+                "fr": "Entrez le pourcentage avec lequel le |prix net| doit être augmenté. Cette marge est toujours positive, même pour les prix négatifs du marché.",
+                "dk": "Indtast den procentsats, som |nettoprisen| skal forhøjes med. Denne avance er altid positiv, selv for negative markedspriser.",
+                "nl": "Voer het percentage in waarmee de |netto prijs| verhoogd moet worden. Deze opslag is altijd positief, zelfs for negatieve marktprijzen."
+              }
+            },
+            {
               "id": "fixedMarkup",
               "type": "number",
               "label": {
@@ -3921,7 +4923,8 @@
               "id": "fixedMarkupTOD",
               "type": "text",
               "label": {
-                "en": "Extra Time Of Day markup"
+                "en": "Extra Time Of Day markup",
+                "nl": "Extra Time Of Day opslag"
               },
               "value": "",
               "hint": {
@@ -3939,7 +4942,8 @@
               "id": "fixedMarkupWeekend",
               "type": "number",
               "label": {
-                "en": "Extra Weekend markup"
+                "en": "Extra Weekend markup",
+                "nl": "Extra Weekend opslag"
               },
               "value": 0,
               "hint": {
@@ -3968,6 +4972,19 @@
             "nl": "Overige instellingen"
           },
           "children": [
+            {
+              "id": "forecastEnable",
+              "type": "checkbox",
+              "label": {
+                "en": "Enable forecast prices",
+                "nl": "Prijsvoorspelling aanzetten"
+              },
+              "hint": {
+                "en": "Add AI pricing forecast (when available).",
+                "nl": "Voeg AI prijsvoorspellingen toe (indien beschikbaar)"
+              },
+              "value": false
+            },
             {
               "id": "tariff_update_group",
               "type": "number",
@@ -4487,6 +5504,32 @@
         {
           "id": "add_devices",
           "template": "add_devices"
+        }
+      ],
+      "repair": [
+        {
+          "id": "repair_warning",
+          "navigation": {
+            "next": "list_devices"
+          }
+        },
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "options": {
+            "singular": true
+          },
+          "navigation": {
+            "next": "loading"
+          }
+        },
+        {
+          "id": "loading",
+          "template": "loading"
+        },
+        {
+          "id": "done",
+          "template": "done"
         }
       ],
       "settings": [
@@ -5271,6 +6314,32 @@
         {
           "id": "add_devices",
           "template": "add_devices"
+        }
+      ],
+      "repair": [
+        {
+          "id": "repair_warning",
+          "navigation": {
+            "next": "list_devices"
+          }
+        },
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "options": {
+            "singular": true
+          },
+          "navigation": {
+            "next": "loading"
+          }
+        },
+        {
+          "id": "loading",
+          "template": "loading"
+        },
+        {
+          "id": "done",
+          "template": "done"
         }
       ],
       "settings": [
@@ -6087,6 +7156,32 @@
           "template": "add_devices"
         }
       ],
+      "repair": [
+        {
+          "id": "repair_warning",
+          "navigation": {
+            "next": "list_devices"
+          }
+        },
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "options": {
+            "singular": true
+          },
+          "navigation": {
+            "next": "loading"
+          }
+        },
+        {
+          "id": "loading",
+          "template": "loading"
+        },
+        {
+          "id": "done",
+          "template": "done"
+        }
+      ],
       "settings": [
         {
           "type": "group",
@@ -6837,7 +7932,7 @@
       "type": "number",
       "title": {
         "en": "Highest hour next 8H",
-        "de": "Höchste Stunde nächste 8 Std.",
+        "de": "Teuerste Stunde nächste 8 Std.",
         "sv": "Högsta timmen nästa 8H",
         "it": "Ora più alta prossime 8h",
         "no": "Høyeste time neste 8T",
@@ -6853,7 +7948,7 @@
       "units": {
         "en": "Hour",
         "no": "Time",
-        "de": "Stunde",
+        "de": "Uhr",
         "sv": "Timme",
         "it": "Ora",
         "nl": "Uur"
@@ -6864,7 +7959,7 @@
       "type": "number",
       "title": {
         "en": "Lowest hour next 8H",
-        "de": "Niedrigste Stunde nächste 8 Std.",
+        "de": "Günstigste Stunde nächste 8 Std.",
         "sv": "Lägsta timmen nästa 8H",
         "it": "Ora più bassa prossime 8h",
         "no": "Laveste time neste 8T",
@@ -6880,7 +7975,7 @@
       "units": {
         "en": "Hour",
         "no": "Time",
-        "de": "Stunde",
+        "de": "Uhr",
         "sv": "Timme",
         "it": "Ora",
         "nl": "Uur"
@@ -6891,7 +7986,7 @@
       "type": "number",
       "title": {
         "en": "Highest hour tomorrow",
-        "de": "Höchste Stunde morgen",
+        "de": "Teuerste Stunde morgen",
         "sv": "Högsta timmen imorgon",
         "it": "Ora più alta di domani",
         "no": "Høyeste time morgen",
@@ -6907,7 +8002,7 @@
       "units": {
         "en": "Hour",
         "no": "Time",
-        "de": "Stunde",
+        "de": "Uhr",
         "sv": "Timme",
         "it": "Ora",
         "nl": "Uur"
@@ -6918,7 +8013,7 @@
       "type": "number",
       "title": {
         "en": "Lowest hour tomorrow",
-        "de": "Niedrigste Stunde morgen",
+        "de": "Günstigste Stunde morgen",
         "sv": "Lägsta timmen imorgen",
         "it": "Ora più bassa di domani",
         "no": "Laveste time morgen",
@@ -6934,7 +8029,7 @@
       "units": {
         "en": "Hour",
         "no": "Time",
-        "de": "Stunde",
+        "de": "Uhr",
         "sv": "Timme",
         "it": "Ora",
         "nl": "Uur"
@@ -6945,7 +8040,7 @@
       "type": "number",
       "title": {
         "en": "Highest hour this day",
-        "de": "Höchste Stunde des Tages",
+        "de": "Teuerste Stunde des Tages",
         "sv": "Högsta timmen idag",
         "it": "Ora più alta di questa giornata",
         "no": "Høyeste time denne dag",
@@ -6961,7 +8056,7 @@
       "units": {
         "en": "Hour",
         "no": "Time",
-        "de": "Stunde",
+        "de": "Uhr",
         "sv": "Timme",
         "it": "Ora",
         "nl": "Uur"
@@ -6972,7 +8067,7 @@
       "type": "number",
       "title": {
         "en": "Lowest hour this day",
-        "de": "Niedrigste Stunde des Tages",
+        "de": "Günstigste Stunde des Tages",
         "sv": "Lägsta timmen idag",
         "it": "Ora più bassa di questa giornata",
         "no": "Laveste time denne dag",
@@ -6988,7 +8083,7 @@
       "units": {
         "en": "Hour",
         "no": "Time",
-        "de": "Stunde",
+        "de": "Uhr",
         "sv": "Timme",
         "it": "Ora",
         "nl": "Uur"
@@ -7591,7 +8686,7 @@
       "type": "number",
       "title": {
         "en": "Money prev. day",
-        "de": "Geld vorheriger Tag",
+        "de": "Kosten vorheriger Tag",
         "sv": "Pengar igår",
         "it": "Spesa giorno precedente",
         "no": "Kostnad forrige dag",
@@ -7613,7 +8708,7 @@
       "type": "number",
       "title": {
         "en": "Money prev. hour",
-        "de": "Geld vorherige Stunde",
+        "de": "Kosten vorherige Stunde",
         "sv": "Pengar föregående timme",
         "it": "Spesa ora precedente",
         "no": "Kostnad forrige time",
@@ -7635,7 +8730,7 @@
       "type": "number",
       "title": {
         "en": "Money prev. month",
-        "de": "Geld vorheriger Monat",
+        "de": "Kosten vorheriger Monat",
         "sv": "Pengar föregående månad",
         "it": "Spesa mese precedente",
         "no": "Kostnad forrige måned",
@@ -7657,7 +8752,7 @@
       "type": "number",
       "title": {
         "en": "Money prev. year",
-        "de": "Geld vorheriges Jahr",
+        "de": "Kosten vorheriges Jahr",
         "sv": "Pengar föregående år",
         "it": "Spesa anno precedente",
         "no": "Kostnad forrige år",
@@ -7679,7 +8774,7 @@
       "type": "number",
       "title": {
         "en": "Money this day",
-        "de": "Geld dieser Tag",
+        "de": "Kosten dieser Tag",
         "sv": "Pengar idag",
         "it": "Spesa oggi",
         "no": "Kostnad idag",
@@ -7701,7 +8796,7 @@
       "type": "number",
       "title": {
         "en": "Money this hour",
-        "de": "Geld diese Stunde",
+        "de": "Kosten diese Stunde",
         "sv": "Pengar denna timme",
         "it": "Spesa ora corrente",
         "no": "Kostnad denne timen",
@@ -7723,7 +8818,7 @@
       "type": "number",
       "title": {
         "en": "Money this month",
-        "de": "Geld dieser Monat",
+        "de": "Kosten dieser Monat",
         "sv": "Pengar denna månad",
         "it": "Spesa mese corrente",
         "no": "Kostnad denne måned",
@@ -7745,7 +8840,8 @@
       "type": "number",
       "title": {
         "en": "Avg. money this month",
-        "nl": "Gem. geld deze maand"
+        "nl": "Gem. geld deze maand",
+        "de": "Durchschn. Kosten dieser Monat"
       },
       "uiComponent": "sensor",
       "icon": "/assets/money_avg.svg",
@@ -7761,7 +8857,7 @@
       "type": "number",
       "title": {
         "en": "Money this year",
-        "de": "Geld dieses Jahr",
+        "de": "Kosten dieses Jahr",
         "sv": "Pengar i år",
         "it": "Spesa anno corrente",
         "no": "Kostnad dette året",
@@ -7783,7 +8879,8 @@
       "type": "number",
       "title": {
         "en": "Avg. money this year",
-        "nl": "Gem. geld dit jaar"
+        "nl": "Gem. geld dit jaar",
+        "de": "Durschn. Kosten dieses Jahr"
       },
       "uiComponent": "sensor",
       "icon": "/assets/money_avg.svg",
@@ -8015,6 +9112,28 @@
       },
       "decimals": 4
     },
+    "meter_price_last_month_avg": {
+      "type": "number",
+      "title": {
+        "en": "Avg. price last month",
+        "de": "Durchschn. Preis letzten Monat",
+        "sv": "Genomsnittligt pris förra månaden",
+        "it": "Prezzo medio mese scorso",
+        "no": "Gj.snitt pris forrige måned",
+        "fr": "Tarif moyen le mois dernier",
+        "dk": "Gn. snt. pris sidste måned",
+        "nl": "Gem. prijs vorige maand"
+      },
+      "uiComponent": "sensor",
+      "icon": "/assets/tariff.svg",
+      "getable": true,
+      "setable": false,
+      "insights": true,
+      "units": {
+        "en": "€"
+      },
+      "decimals": 4
+    },
     "meter_price_next_8h_avg": {
       "type": "number",
       "title": {
@@ -8041,7 +9160,7 @@
       "type": "number",
       "title": {
         "en": "Highest price next 8H",
-        "de": "Höchste Preis nächste 8 Std.",
+        "de": "Höchstpreis nächste 8 Std.",
         "sv": "Högsta pris nästa 8H",
         "it": "Prezzo più alta prossime 8h",
         "no": "Høyeste pris neste 8T",
@@ -8107,7 +9226,7 @@
       "type": "number",
       "title": {
         "en": "Highest price tomorrow",
-        "de": "Höchste Preis morgen",
+        "de": "Höchstpreis morgen",
         "sv": "Högsta pris imorgon",
         "it": "Prezzo più alta di domani",
         "no": "Høyeste pris morgen",
@@ -8151,7 +9270,7 @@
       "type": "number",
       "title": {
         "en": "Avg. price this day",
-        "de": "Durchschn. Preis an diesem Tag",
+        "de": "Durchschn. Preis dieser Tag",
         "sv": "Genomsnittligt pris idag",
         "it": "Prezzo medio giornata odierna",
         "no": "Gj.snitt pris denne dag",
@@ -8173,7 +9292,7 @@
       "type": "number",
       "title": {
         "en": "Highest price this day",
-        "de": "Höchste Preis an diesem Tag",
+        "de": "Höchstpreis dieser Tag",
         "sv": "Högsta pris idag",
         "it": "Prezzo più alta giornata odierna",
         "no": "Høyeste pris idag",
@@ -8195,7 +9314,7 @@
       "type": "number",
       "title": {
         "en": "Lowest price this day",
-        "de": "Niedrigster Preis an diesem Tag",
+        "de": "Niedrigster Preis dieser Tag",
         "sv": "Lägsta pris idag",
         "it": "Prezzo più basso giornata odierna",
         "no": "Laveste pris idag",
@@ -8212,6 +9331,62 @@
         "en": "€"
       },
       "decimals": 4
+    },
+    "meter_price_this_month_avg": {
+      "type": "number",
+      "title": {
+        "en": "Avg. price this month",
+        "de": "Durchschn. Preis diesen Monat",
+        "sv": "Genomsnittligt pris denna månad",
+        "it": "Prezzo medio mese odierno",
+        "no": "Gj.snitt pris denne måned",
+        "fr": "Tarif moyen ce mois-ci",
+        "dk": "Gn. snt. pris denne måned",
+        "nl": "Gem. prijs deze maand"
+      },
+      "uiComponent": "sensor",
+      "icon": "/assets/tariff.svg",
+      "getable": true,
+      "setable": false,
+      "insights": true,
+      "units": {
+        "en": "€"
+      },
+      "decimals": 4
+    },
+    "meter_rank_price_h0_next_8h": {
+      "type": "number",
+      "title": {
+        "en": "Price now rank next 8H",
+        "nl": "Prijs nu rang komende 8U",
+        "de": "Akt. Preisstufe der nächsten 8 Std."
+      },
+      "units": {
+        "en": "/8"
+      },
+      "uiComponent": "sensor",
+      "icon": "/assets/target.svg",
+      "getable": true,
+      "setable": false,
+      "insights": false,
+      "decimals": 0
+    },
+    "meter_rank_price_h0_this_day": {
+      "type": "number",
+      "title": {
+        "en": "Price now rank this day",
+        "nl": "Prijs nu rang vandaag",
+        "de": "Akt. Preisstufe heute"
+      },
+      "units": {
+        "en": "/24"
+      },
+      "uiComponent": "sensor",
+      "icon": "/assets/target.svg",
+      "getable": true,
+      "setable": false,
+      "insights": false,
+      "decimals": 0
     },
     "meter_target_month_to_date": {
       "type": "number",
@@ -8268,6 +9443,24 @@
         "en": "¤"
       },
       "decimals": 4
+    },
+    "roi_duration": {
+      "type": "number",
+      "title": {
+        "en": "ROI duration",
+        "nl": "ROI duur",
+        "de": "ROI Dauer"
+      },
+      "uiComponent": null,
+      "icon": "/assets/tariff.svg",
+      "getable": true,
+      "setable": false,
+      "insights": false,
+      "units": {
+        "en": "Min.",
+        "nl": "Min."
+      },
+      "decimals": 0
     }
   }
 }

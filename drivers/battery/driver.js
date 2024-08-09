@@ -1,5 +1,5 @@
 /*
-Copyright 2019 - 2023, Robin de Gruijter (gruijter@hotmail.com)
+Copyright 2019 - 2024, Robin de Gruijter (gruijter@hotmail.com)
 
 This file is part of com.gruijter.powerhour.
 
@@ -23,7 +23,7 @@ const GenericDriver = require('../generic_bat_driver');
 
 const driverSpecifics = {
 	driverId: 'battery',
-	originDeviceCapabilities: ['measure_battery', 'measure_power.battery'],
+	originDeviceCapabilities: ['measure_battery', 'measure_power.battery', 'measure_power.battery1'],
 	sourceCapGroups: [
 		{
 			soc: 'measure_battery', productionPower: 'measure_power', chargeMode: 'charge_mode',	// Sessy
@@ -34,6 +34,18 @@ const driverSpecifics = {
 		{
 			soc: 'battery_capacity', usagePower: 'measure_power.battery',	// Victron
 		},
+		{
+			soc: 'measure_battery', productionPower: 'measure_power.batt_in', usagePower: 'measure_power.batt_out',	// Sonnen
+		},
+		{
+			soc: 'measure_battery', productionPower: 'from_battery_capability', usagePower: 'to_battery_capability',	// Sonnen Batterie
+		},
+		{
+			soc: 'measure_percentage.bat_soc', productionPower: 'measure_power.battery',	// Blauhoff Afore
+		},
+		{
+			soc: 'measure_percentage.battery1', productionPower: 'measure_power.battery1',	// Blauhoff Deye
+		}
 	],
 	deviceCapabilities: [
 		'measure_watt_avg', 'meter_kwh_stored',
@@ -43,6 +55,7 @@ const driverSpecifics = {
 		'meter_money_last_year', 'meter_money_this_year',
 		'meter_tariff',
 		'meter_power_hidden',
+		// 'roi_duration', // added only for HP2023
 	],
 };
 

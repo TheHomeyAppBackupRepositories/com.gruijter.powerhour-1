@@ -1,6 +1,6 @@
 /* eslint-disable no-await-in-loop */
 /*
-Copyright 2019 - 2023, Robin de Gruijter (gruijter@hotmail.com)
+Copyright 2019 - 2024, Robin de Gruijter (gruijter@hotmail.com)
 
 This file is part of com.gruijter.powerhour.
 
@@ -22,7 +22,9 @@ along with com.gruijter.powerhour.  If not, see <http://www.gnu.org/licenses/>.
 
 const { Device } = require('homey');
 const util = require('util');
-const tradeStrategy = require('../hedge_strategy');
+const charts = require('../charts');
+const tradeStrategy = require('../hedge_strategy'); // deprecated
+const roiStrategy = require('../hedge_roi_glpk'); // new method
 
 const setTimeoutPromise = util.promisify(setTimeout);
 
@@ -37,10 +39,10 @@ class batDevice extends Device {
 			// this.initReady = false;
 			this.destroyListeners();
 			this.timeZone = this.homey.clock.getTimezone();
-			this.settings = await this.getSettings();
 
 			if (!this.migrated) await this.migrate();
 			this.migrated = true;
+			if (this.currencyChanged) await this.migrateCurrencyOptions(this.getSettings().currency, this.getSettings().decimals);
 			await this.setAvailable().catch(this.error);
 
 			// restore device values
@@ -51,7 +53,17 @@ class batDevice extends Device {
 
 			// poll first values
 			await this.poll();
+
 			this.initReady = true;
+
+			// create Strategy and ROI chart
+			if (this.getSettings().roiEnable) {
+				await setTimeoutPromise(10000 + (Math.random() * 10000)).catch(this.error);
+				this.triggerNewRoiStrategyFlow().catch(this.error);
+				await setTimeoutPromise(20000 + (Math.random() * 10000)).catch(this.error);
+				this.updateChargeChart().catch(this.error);
+			}
+
 		} catch (error) {
 			this.error(error);
 			// this.restartDevice(10 * 60 * 1000).catch(this.error); // restart after 10 minutes
@@ -80,6 +92,12 @@ class batDevice extends Device {
 			// check and repair incorrect capability(order)
 			const correctCaps = this.driver.ds.deviceCapabilities;
 
+			// check if on HP2023 > add advanced ROI capabilities
+			const HP2023 = this.homey.platformVersion === 2;
+			if (HP2023 && this.getSettings().roiEnable) {
+				correctCaps.push('roi_duration');
+			}
+
 			for (let index = 0; index < correctCaps.length; index += 1) {
 				const caps = this.getCapabilities();
 				const newCap = correctCaps[index];
@@ -104,12 +122,29 @@ class batDevice extends Device {
 
 			// set new migrate level
 			await this.setSettings({ level: this.homey.app.manifest.version }).catch(this.error);
-			this.settings = await this.getSettings();
 			Promise.resolve(true);
 		} catch (error) {
 			this.error('Migration failed', error);
 			Promise.reject(error);
 		}
+	}
+
+	async migrateCurrencyOptions(currency, decimals) {
+		this.log('migrating capability options');
+		this.setUnavailable('Device is migrating. Please wait!').catch(this.error);
+		const options = {
+			units: { en: currency },
+			decimals,
+		};
+		if (!currency || currency === '') options.units.en = '€';
+		if (!Number.isInteger(decimals)) options.decimals = 4;
+		const moneyCaps = this.driver.ds.deviceCapabilities.filter((name) => name.includes('meter_money') || name.includes('meter_tariff'));
+		for (let i = 0; i < moneyCaps.length; i += 1) {
+			this.log(`migrating ${moneyCaps[i]} to use ${options.units.en} and ${options.decimals} decimals`);
+			await this.setCapabilityOptions(moneyCaps[i], options).catch(this.error);
+			await setTimeoutPromise(2 * 1000);
+		}
+		this.currencyChanged = false;
 	}
 
 	async restartDevice(delay) {
@@ -142,7 +177,6 @@ class batDevice extends Device {
 	async onSettings({ newSettings, changedKeys }) { // , oldSettings, changedKeys) {
 		if (!this.migrated) throw Error('device is not ready. Ignoring new settings!');
 		this.log(`${this.getName()} device settings changed by user`, newSettings);
-
 		if (this.meterMoney) {
 			const money = { ...this.meterMoney };
 			if (changedKeys.includes('meter_money_this_month')) {
@@ -166,7 +200,16 @@ class batDevice extends Device {
 				await this.setCapability('meter_money_this_year', money.year);
 			}
 		}
-		this.restartDevice(1000);
+		if (changedKeys.includes('currency') || changedKeys.includes('decimals')) {
+			this.currencyChanged = true;
+		}
+		if (changedKeys.includes('meter_kwh_charging')) await this.setCapability('meter_kwh_charging', newSettings.meter_kwh_charging);
+		if (changedKeys.includes('meter_kwh_discharging'))	await this.setCapability('meter_kwh_discharging', newSettings.meter_kwh_discharging);
+		if (changedKeys.includes('roiEnable')) {
+			const HP2023 = this.homey.platformVersion === 2;
+			if (!HP2023 && newSettings.roiEnable) throw Error('Advanced ROI is only available on HP2023!');
+		}
+		this.restartDevice(2000);
 	}
 
 	destroyListeners() {
@@ -189,12 +232,12 @@ class batDevice extends Device {
 	}
 
 	// EXECUTORS FOR CONDITION FLOWS AND TRIGGERS
+	// BASIC STRATEGY FLOW (HP2016/2019)
 	async priceBattBestTrade(args) {
 		await setTimeoutPromise(3000); // wait 3 seconds for new hourly prices to be taken in
 		if (!this.pricesNextHours) throw Error('no prices available');
-		const chargePower = this.getSettings().chargePower - this.getSettings().ownPowerOn;
-		// (this.getSettings().chargePower - this.getSettings().ownPowerOn) * (1 - this.getSettings().chargeLoss / 100);
-		const dischargePower = (this.getSettings().dischargePower - this.getSettings().ownPowerOn) * (1 - this.getSettings().dischargeLoss / 100);
+		const { chargePower } = this.getSettings(); // max power
+		const { dischargePower } = this.getSettings(); // max power
 		const options = {
 			prices: this.pricesNextHours,
 			minPriceDelta: args.minPriceDelta,
@@ -205,6 +248,75 @@ class batDevice extends Device {
 		};
 		const strat = tradeStrategy.getStrategy(options);
 		return strat === Number(args.strat);
+	}
+
+	// ADVANCED STRATEGY FLOW (HP2023)
+	async findRoiStrategy(args) {
+		try {
+			if (!this.getSettings().roiEnable)	return Promise.resolve(null);
+			this.log(`ROI strategy calculation started for ${this.getName()} minPriceDelta:`, args.minPriceDelta);
+			if (this.getSettings().roiMinProfit !== args.minPriceDelta) this.setSettings({ roiMinProfit: args.minPriceDelta }).catch(this.error);
+			await setTimeoutPromise(3000); // wait 3 seconds for new hourly prices to be taken in
+			if (!this.pricesNextHours) throw Error('no prices available');
+			const settings = this.getSettings();
+			const chargeSpeeds = [
+				{
+					power: settings.chargePower, // Watt. Max speed charging power in Watt (on AC side), loss is included
+					eff: 1 - (settings.chargeLoss / 100), // efficiency when using Max speed charging
+				},
+				{
+					power: settings.chargePowerEff, // Watt. Efficient charging power in Watt (on AC side), loss is included
+					eff: 1 - (settings.chargeLossEff / 100), // efficiency when using Efficient charging
+				},
+				{
+					power: settings.chargePower3, // Watt. Additional charging power in Watt (on AC side), loss is included
+					eff: 1 - (settings.chargeLoss3 / 100), // efficiency when using additional charging
+				},
+			].filter((speed) => speed.power);
+			const dischargeSpeeds = [	// defaults to Sessy values
+				{
+					power: settings.dischargePower, // Watt. Max speed discharging power in Watt (on AC side), loss is included
+					eff: 1 - (settings.dischargeLoss / 100), // efficiency when using Max speed discharging
+				},
+				{
+					power: settings.dischargePowerEff, // Watt. Efficient discharging power in Watt (on AC side), loss is included
+					eff: 1 - (settings.dischargeLossEff / 100), // efficiency when using Efficient discharging
+				},
+				{
+					power: settings.dischargePower3, // Watt. Additional discharging power in Watt (on AC side), loss is included
+					eff: 1 - (settings.dischargeLoss3 / 100), // efficiency when using additional discharging
+				},
+			].filter((speed) => speed.power);	// remove 0W entries
+			const now = new Date();
+			const startMinute = now.getMinutes();
+			const options = {
+				prices: [...this.pricesNextHours],
+				minPriceDelta: args.minPriceDelta,
+				soc: this.soc,
+				startMinute,
+				batCapacity: this.getSettings().batCapacity,
+				chargeSpeeds,
+				dischargeSpeeds,
+			};
+			const stratOptsString = JSON.stringify(options);
+			if (this.lastStratOptsString === stratOptsString) {
+				this.log('Strategy is pulled from cache', this.getName());
+				return Promise.resolve(this.lastStratTokens);
+			}
+			const strat = roiStrategy.getStrategy(options);
+			const tokens = {
+				power: strat[0].power,
+				duration: strat[0].duration,
+				endSoC: strat[0].soc,
+				scheme: JSON.stringify(strat),
+			};
+			this.lastStratOptsString = stratOptsString;
+			this.lastStratTokens = { ...tokens };
+			// global.gc();
+			return Promise.resolve(tokens);
+		} catch (error) {
+			return Promise.reject(error);
+		}
 	}
 
 	async getReadingObject(value) {
@@ -226,17 +338,28 @@ class batDevice extends Device {
 		this.log(`${this.getName()} Restoring device values after init`);
 
 		// init pricesNextHours
+		if (!this.pricesNextHoursMarketLength) this.pricesNextHoursMarketLength = await this.getStoreValue('pricesNextHoursMarketLength');
+		if (!this.pricesNextHoursMarketLength) this.pricesNextHoursMarketLength = 99;
 		if (!this.pricesNextHours) this.pricesNextHours = await this.getStoreValue('pricesNextHours');
 		if (!this.pricesNextHours) {
-			this.pricesNextHours = [0.25];
-			await this.setStoreValue('pricesNextHours', this.pricesNextHours);
+			this.pricesNextHours = [0.25]; // set as default after pair
+			// get DAP prices when available
+			this.driver.setPricesDevice(this);
 		}
 
 		// init incoming meter queue
 		if (!this.newReadings) this.newReadings = [];
 
+		// init this.soc
+		const storedkWh = await this.getCapabilityValue('meter_kwh_stored');
+		this.soc = (storedkWh / this.getSettings().batCapacity) * 100;
+		if (!this.soc) this.soc = 0;
+
+		// init XOM
+		this.xomTargetPower = 0;
+
 		// init this.startDay, this.startMonth and this.year
-		let startDateString = this.settings.start_date;
+		let startDateString = this.getSettings().start_date;
 		if (!startDateString || startDateString.length !== 4) startDateString = '0101'; // ddmm
 		this.startDay = Number(startDateString.slice(0, 2));
 		this.startMonth = Number(startDateString.slice(2, 4));
@@ -277,6 +400,12 @@ class batDevice extends Device {
 				lastYear: await this.getCapabilityValue('meter_money_last_year'),
 			};
 		}
+
+		// update kWh readings in settings
+		const meterCharging = await this.getCapabilityValue('meter_kwh_charging');
+		const meterDischarging = await this.getCapabilityValue('meter_kwh_discharging');
+		if (meterCharging) await this.setSettings({ meter_kwh_charging: meterCharging }).catch(this.error);
+		if (meterDischarging) await this.setSettings({ meter_kwh_discharging: meterDischarging }).catch(this.error);
 	}
 
 	// init some stuff when first reading comes in
@@ -287,7 +416,7 @@ class batDevice extends Device {
 			this.log(`${this.getName()} Setting values after pair init`);
 			await this.setStoreValue('lastReadingHour', reading);
 			this.lastReadingHour = reading;
-			const dayStart = this.settings.homey_device_daily_reset ? this.getReadingObject(0) : reading;
+			const dayStart = this.getSettings().homey_device_daily_reset ? this.getReadingObject(0) : reading;
 			await this.setStoreValue('lastReadingDay', dayStart);
 			this.lastReadingDay = dayStart;
 			await this.setStoreValue('lastReadingMonth', reading);
@@ -306,15 +435,100 @@ class batDevice extends Device {
 	}
 
 	// update the prices from DAP
-	async updatePrices(pricesNextHours) {
+	async updatePrices(pricesNextHours, pricesNextHoursMarketLength) {
 		try {
 			if (!pricesNextHours || !pricesNextHours[0]) return;
+			this.pricesNextHoursMarketLength = pricesNextHoursMarketLength;
+			if (!this.initReady || JSON.stringify(pricesNextHours) === JSON.stringify(this.pricesNextHours)) return; // only update when changed
 			this.pricesNextHours = pricesNextHours;
 			this.setCapability('meter_tariff', pricesNextHours[0]);
 			this.setStoreValue('pricesNextHours', pricesNextHours);
+			this.setStoreValue('pricesNextHoursMarketLength', pricesNextHoursMarketLength);
+			// trigger ROI card
+			if (this.getSettings().roiEnable) {
+				await this.triggerNewRoiStrategyFlow();
+				await this.updateChargeChart();
+			}
 		} catch (error) {
 			this.error(error);
 		}
+	}
+
+	// trigger XOM flow cards SEE BAT DRIVER
+
+	// trigger ROI flow cards
+	async triggerNewRoiStrategyFlow() {
+		try {
+			if (!this.getSettings().roiEnable) return Promise.resolve(null);
+			await setTimeoutPromise(5000 + Math.random() * 20000);
+			// get all minPriceDelta as entered by user in trigger flows for this device
+			const argValues = await this.homey.app._newRoiStrategy.getArgumentValues(this);
+			const uniqueArgs = argValues.filter((a, idx) => argValues.findIndex((b) => b.minPriceDelta === argValues[idx].minPriceDelta) === idx);
+			uniqueArgs.forEach(async (args) => {
+				const tokens = await this.findRoiStrategy(args).catch(this.error);
+				if (tokens) {
+					const state = args;
+					this.homey.app.triggerNewRoiStrategy(this, tokens, state);
+					this.reTriggerNewRoiStrategyFlow(tokens, args).catch(this.error);
+				}
+			});
+			await setTimeoutPromise(5000 + Math.random() * 20000);
+			return Promise.resolve(true);
+		} catch (error) {
+			return Promise.reject(error);
+		}
+	}
+
+	// re-trigger ROI flow cards when duration ends
+	async reTriggerNewRoiStrategyFlow(tokens, args) {
+		try {
+			const {
+				duration, power, endSoC, scheme,
+			} = tokens;
+			if (duration === 0) return;
+			const now = new Date();
+			const startMinute = now.getMinutes();
+			if ((startMinute + duration) >= 55) return;		// do not retrigger if duration is crossing to next hour
+			if (power > 0 && endSoC <= 1) return;			// do not retrigger when discharging to empty
+			if (power < 0 && endSoC >= 99) return;		// do not retrigger when charging to full
+			// Retrigger after delay when partly charging or discharging
+			this.log(`Stopping ROI in ${startMinute + duration} minutes`, this.getName());
+			const delay = (startMinute + duration) * 60 * 1000;
+			await setTimeoutPromise(delay).catch(this.error);
+			const state = args;
+			const newTokens = {
+				power: 0, duration: 0, endSoC, scheme,
+			};
+			this.log('Stopping ROI', this.getName());
+			this.homey.app.triggerNewRoiStrategy(this, newTokens, state);
+		} catch (error) {
+			this.error(error);
+		}
+	}
+
+	async updateChargeChart() {
+		if (!this.pricesNextHours) throw Error('no prices available');
+		this.log('updating charge chart', this.getName());
+		const minPriceDelta = this.getSettings().roiMinProfit;
+		const strategy = await this.findRoiStrategy({ minPriceDelta }).catch(this.error);
+		if (strategy) {
+			this.setCapability('roi_duration', strategy.duration);
+			const now = new Date();
+			now.setMilliseconds(0); // toLocaleString cannot handle milliseconds...
+			const nowLocal = new Date(now.toLocaleString('en-US', { timeZone: this.timeZone }));
+			const H0 = nowLocal.getHours();
+			// eslint-disable-next-line max-len
+			const urlNextHours = await charts.getChargeChart(strategy, H0, this.pricesNextHoursMarketLength, this.getSettings().chargePower, this.getSettings().dischargePower);
+			if (!this.nextHoursChargeImage) {
+				this.nextHoursChargeImage = await this.homey.images.createImage();
+				await this.nextHoursChargeImage.setUrl(urlNextHours);
+				await this.setCameraImage('nextHoursChargeChart', ` ${this.homey.__('nextHours')}`, this.nextHoursChargeImage);
+			} else {
+				await this.nextHoursChargeImage.setUrl(urlNextHours);
+			}
+			await this.nextHoursChargeImage.update().catch(this.error);
+		}
+		return Promise.resolve(true);
 	}
 
 	async handleUpdateMeter(reading) {
@@ -372,17 +586,12 @@ class batDevice extends Device {
 		const measureTm = new Date();
 		let value = val;
 		// apply power corrections
-		if (val > 0) {	// discharging
-			value -= this.getSettings().ownPowerOn; // substract own usage. default 35
-			value *= (1 - this.getSettings().dischargeLoss / 100); // substract default 7.7%
-		}
-		if (val < 0) {	// charging
-			value -= this.getSettings().ownPowerOn; // substract own usage. default 35
-			value /= (1 - this.getSettings().chargeLoss / 100); // add default 9.7%
-		}
-		if (val === 0) { // standby
-			value -= this.getSettings().ownPowerStandby; // substract standby usage. default 2.5
-		}
+		// charging CHARGE POWER IS ON AC SIDE, SO NO LOSS CORRECTION NEEDED
+		// if (val < 0) value /= (1 - this.getSettings().chargeLoss / 100); // add max charge loss
+		// discharging DISCHARGE POWER IS ON AC SIDE, SO NO LOSS CORRECTION NEEDED
+		// if (val > 0) value *= (1 - this.getSettings().dischargeLoss / 100); // substract max discharge loss
+		// standby
+		if (val === 0) value -= this.getSettings().ownPowerStandby; // substract standby usage
 
 		if (typeof value !== 'number') return;
 		const deltaTm = measureTm - new Date(this.lastMeasure.measureTm);
@@ -448,6 +657,11 @@ class batDevice extends Device {
 			lastReadingHour = reading;
 			await this.setStoreValue('lastReadingHour', reading);
 			await this.setSettings({ meter_latest: `${reading.meterValue}` }).catch(this.error);
+			// update kWh readings in settings
+			const meterCharging = await this.getCapabilityValue('meter_kwh_charging');
+			const meterDischarging = await this.getCapabilityValue('meter_kwh_discharging');
+			if (meterCharging) await this.setSettings({ meter_kwh_charging: meterCharging }).catch(this.error);
+			if (meterDischarging) await this.setSettings({ meter_kwh_discharging: meterDischarging }).catch(this.error);
 		}
 		if (periods.newDay) {
 			// new day started

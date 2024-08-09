@@ -1,5 +1,5 @@
 /*
-Copyright 2019 - 2023, Robin de Gruijter (gruijter@hotmail.com)
+Copyright 2019 - 2024, Robin de Gruijter (gruijter@hotmail.com)
 
 This file is part of com.gruijter.powerhour.
 
@@ -23,14 +23,13 @@ const https = require('https');
 const qs = require('querystring');
 // const util = require('util');
 
-const defaultHost1 = 'gasandregistry.eex.com';	// EGSI
-const defaultHost2 = 'webservice-eex.gvsi.com';	// EOD
+const defaultHost = 'webservice-eex.gvsi.com';	// EOD and EGSI
 const defaultPort = 443;
 const defaultTimeout = 30000;
 
 const biddingZones = {
-	TTF_EOD: 'TTF_EOD_EEX',
-	TTF_EGSI: 'TTF_EGSI_EEX',
+	TTF_EOD: 'TTF_EOD',
+	TTF_EGSI: 'TTF_EGSI',
 	CEGH_VTP_EOD: 'CEGH_VTP_EOD',
 	CEGH_VTP_EGSI: 'CEGH_VTP_EGSI',
 	CZ_VTP_EOD: 'CZ_VTP_EOD',
@@ -45,33 +44,37 @@ const biddingZones = {
 	ZTP_EGSI: 'ZTP_EGSI',
 	PVB_EOD: 'PVB_EOD',
 	PVB_EGSI: 'PVB_EGSI',
+	NBP_EOD: 'NBP_EOD',
+	NBP_EGSI: 'NBP_EGSI',
 };
 
 // mapping for eex page,
 const biddingZonesMap = {
 	TTF_EOD: '"#E.TTF_GND1"',
-	TTF_EGSI: 'TTF_EGSI',
 	CEGH_VTP_EOD: '"#E.CEGH_GND1"',
-	CEGH_VTP_EGSI: 'CEGH_VTP_EGSI',
 	CZ_VTP_EOD: '"#E.OTE_GSND"',
-	CZ_VTP_EGSI: 'CZ_VTP_EGSI',
 	ETF_EOD: '"#E.ETF_GND1"',
-	ETF_EGSI: 'ETF_EGSI',
-	THE_EOD: '"#E.THE_GWE1"',
-	THE_EGSI: 'THE_EGSI',
+	THE_EOD: '"#E.THE_GND1"',
 	PEG_EOD: '"#E.PEG_GND1"',
-	PEG_EGSI: 'PEG_EGSI',
 	ZTP_EOD: '"#E.ZTP_GTND"',
-	ZTP_EGSI: 'ZTP_EGSI',
 	PVB_EOD: '"#E.PVB_GSND"',
-	PVB_EGSI: 'PVB_EGSI',
+	NBP_EOD: '"#E.NBP_GPND"',
+
+	TTF_EGSI: '"$E.EGSI_TTF_DAY"',
+	CEGH_VTP_EGSI: '"$E.EGSI_CEHG_VTP_DAY"',
+	CZ_VTP_EGSI: '"$E.EGSI_CZ_VTP"',
+	ETF_EGSI: '"$E.EGSI_ETF_DAY"',
+	THE_EGSI: '"$E.EGSI_THE_DAY"',
+	PEG_EGSI: '"$E.EGSI_PEG_DAY"',
+	ZTP_EGSI: '"$E.EGSI_ZTP_DAY"',
+	PVB_EGSI: '"$E.EGSI_PVB_DAY"',
+	NBP_EGSI: '"$E.EGSI_NBP_DAY"',
 };
 
 class EEX {
 	// Represents a session to the PowerNext API.
 	constructor(opts) {
 		const options = opts || {};
-		const defaultHost = (opts && opts.biddingZone.includes('EGSI')) ? defaultHost1 : defaultHost2;
 		this.host = options.host || defaultHost;
 		this.port = options.port || defaultPort;
 		this.timeout = options.timeout || defaultTimeout;
@@ -109,27 +112,22 @@ class EEX {
 			end.setMilliseconds(0);
 
 			let path = '';
-			if (zone.includes('EGSI')) {
-				path = '/Gas/EGSI/EGSI_Day_45_Days.csv';
-				this.host = defaultHost1;
-			} else {
-				this.host = defaultHost2;
-				this.tmpZone = zone;
-				const start2 = new Date(start);
-				start2.setDate(start.getDate() - 1); // start earlier to make sure weekend is fetched
-				const [chartstartdate] = start2.toISOString().split('T'); // '2022-11-30'
-				const [chartstopdate] = end.toISOString().split('T'); // '2023-01-15'
-				const priceSymbol = biddingZonesMap[zone]; // '"#E.TTF_GND1"' // weekend: '"#E.TTF_GWE1"'
-				const query = qs.stringify({
-					priceSymbol,
-					chartstartdate,
-					chartstopdate,
-					// dailybarinterval: 'Days',
-					// aggregatepriceselection: 'First',
-				});
-				path = `/query/json/getDaily/close/onexchtradevolumeeex/tradedatetimegmt/?${query}`;
-			}
-
+			this.tmpZone = zone;
+			const start2 = new Date(start);
+			start2.setDate(start.getDate() - 1); // start earlier to make sure weekend is fetched
+			const [chartstartdate] = start2.toISOString().split('T'); // '2022-11-30'
+			const [chartstopdate] = end.toISOString().split('T'); // '2023-01-15'
+			const priceSymbol = biddingZonesMap[zone]; // '"#E.TTF_GND1"' // "#E.EGSI_TTF_DAY" // weekend: '"#E.TTF_GWE1"' "#E.EGSI_TTF_WEEKEND"
+			const query = qs.stringify({
+				priceSymbol,
+				chartstartdate,
+				chartstopdate,
+				// dailybarinterval: 'Days',
+				// aggregatepriceselection: 'First',
+			});
+			path = `/query/json/getDaily/close/tradedatetimegmt/?${query}`;
+			// path = `/query/json/getDaily/close/onexchtradevolumeeex/tradedatetimegmt/?${query}`;
+	
 			const res = await this._makeRequest(path, '');
 			if (!res || !res[0] || !res[0].time) throw Error('no gas price info found');
 
@@ -148,8 +146,6 @@ class EEX {
 					};
 				})
 				.filter((day) => day.tariffStart >= new Date(start - 24 * 60 * 60 * 1000)); // filter out too old days; // [];
-
-			// console.log(priceInfo);
 
 			// pad info to fill all hours in a day
 			let info = [];
@@ -181,7 +177,6 @@ class EEX {
 				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
 				Connection: 'keep-alive',
 			};
-			if (path.includes('.csv')) headers['content-type'] = 'text/csv';
 			const options = {
 				hostname: this.host,
 				port: this.port,
@@ -203,32 +198,17 @@ class EEX {
 				throw Error(`Expected ${headers['content-type']} but received ${contentType}: ${body}`);
 			}
 
-			// parse EGSI .csv file
-			if (contentType.includes('csv')) {
-				const resp = result.body
-					.split('\n')
-					.filter((line) => line.includes('EUR/MWh'))
-					.map((line) => {
-						const info = line.split(';');
-						return {
-							time: new Date(info[0]),
-							price: Number(info[3]),
-							descr: `${info[2]}_EGSI`.replace(' ', '_'),
-						};
-					});
-				// console.dir(resp, { depth: null });
-				// console.dir(resp.filter((info) => info.descr === this.biddingZone), { depth: null });
-				return Promise.resolve(resp);
-			}
+			// console.log(contentType, result.body);
 
-			// parse EOD JSON
+			// parse JSON
 			if (contentType.includes('json')) {
 				// parse daily info
 				const respJSON = JSON.parse(result.body);
 				if (!respJSON.results || !respJSON.results.items) throw Error('Invalid info');
 				const dailyInfo = respJSON.results.items;
 				const lastDaily = dailyInfo.slice(-1)[0]; // {close:55.665, onexchtradevolumeeex:3277272, tradedatetimegmt:'1/16/2023 12:00:00 PM'}
-				// console.dir(weekInfo, { depth: null });
+				// console.dir(dailyInfo, { depth: null });
+				// console.dir(lastDaily, { depth: null });
 
 				// compensate for bug in EEX
 				if (this.lastDailyInfo) {
@@ -244,11 +224,15 @@ class EEX {
 				}
 				this.lastDailyInfo = [...dailyInfo];
 
-				// fetch weekend info
-				options.path = options.path.replace('ND', 'WE');
-				const resultW = await this._makeHttpsRequest(options, postMessage, timeout);
-				const respWJSON = JSON.parse(resultW.body);
-				const weekendInfo = respWJSON.results && respWJSON.results.items;
+				// fetch weekend info ONLY FOR EOD (not EGSI)
+				let weekendInfo;
+				if (this.tmpZone.includes('EOD')) {
+					options.path = options.path.replace('ND', 'WE');
+					options.path = options.path.replace('DAY', 'WEEKEND');
+					const resultW = await this._makeHttpsRequest(options, postMessage, timeout);
+					const respWJSON = JSON.parse(resultW.body);
+					weekendInfo = respWJSON.results && respWJSON.results.items;
+				}
 
 				// fetch today settle
 				const priceSymbol = biddingZonesMap[this.tmpZone]; // '"#E.TTF_GND1"' // weekend: '"#E.TTF_GWE1"'
@@ -274,10 +258,13 @@ class EEX {
 					};
 
 					// Check if last daily entry is closed // after 20:00 CET?
-					if ((idx === dailyInfo.length - 1) && !lastDailyIsClosed) mappedDay = null; // ignore last day info because it is not closed yet
+					if ((idx === dailyInfo.length - 1)
+						&& mappedDay.time.getDay() !== 6 // is actually price for monday after the weekend
+						&& !lastDailyIsClosed) mappedDay = null; // ignore last day info because it is not closed yet
 
 					// Check if last entry is weekend info, and is closed
 					if (weekendInfo && mappedDay && mappedDay.time.getDay() === 6) {
+						console.log('it is weekend');
 						const [weekend] = weekendInfo.filter((dayW) => dayW.tradedatetimegmt === day.tradedatetimegmt);
 						const satTime = new Date(weekend.tradedatetimegmt.split(' ')[0]);
 						satTime.setDate(satTime.getDate() + 1); // is day ahead, duh...
@@ -354,33 +341,33 @@ module.exports = EEX;
 // const test = async () => {
 // 	const next = new EEX({ biddingZone: 'TTF_EOD' });
 
-// 	next.lastDailyInfo = [
-// 		{
-// 			close: 59.83,
-// 			onexchtradevolumeeex: 3369840,
-// 			tradedatetimegmt: '1/16/2023 12:00:00 PM',
-// 		},
-// 		{
-// 			close: 59.83,
-// 			onexchtradevolumeeex: 3679632,
-// 			tradedatetimegmt: '1/17/2023 12:00:00 PM',
-// 		},
-// 		{
-// 			close: 60.01,
-// 			onexchtradevolumeeex: 3719736,
-// 			tradedatetimegmt: '1/18/2023 12:00:00 PM',
-// 		},
-// 		{
-// 			close: 61.271,
-// 			onexchtradevolumeeex: 3815928,
-// 			tradedatetimegmt: '1/19/2023 12:00:00 PM',
-// 		},
-// 		{
-// 			close: 62.125,
-// 			onexchtradevolumeeex: 554952,
-// 			tradedatetimegmt: '1/20/2023 12:00:00 PM',
-// 		},
-// 	];
+// 	// next.lastDailyInfo = [
+// 	// 	{
+// 	// 		close: 59.83,
+// 	// 		onexchtradevolumeeex: 3369840,
+// 	// 		tradedatetimegmt: '1/16/2023 12:00:00 PM',
+// 	// 	},
+// 	// 	{
+// 	// 		close: 59.83,
+// 	// 		onexchtradevolumeeex: 3679632,
+// 	// 		tradedatetimegmt: '1/17/2023 12:00:00 PM',
+// 	// 	},
+// 	// 	{
+// 	// 		close: 60.01,
+// 	// 		onexchtradevolumeeex: 3719736,
+// 	// 		tradedatetimegmt: '1/18/2023 12:00:00 PM',
+// 	// 	},
+// 	// 	{
+// 	// 		close: 61.271,
+// 	// 		onexchtradevolumeeex: 3815928,
+// 	// 		tradedatetimegmt: '1/19/2023 12:00:00 PM',
+// 	// 	},
+// 	// 	{
+// 	// 		close: 62.125,
+// 	// 		onexchtradevolumeeex: 554952,
+// 	// 		tradedatetimegmt: '1/20/2023 12:00:00 PM',
+// 	// 	},
+// 	// ];
 
 // 	const today = new Date();
 // 	today.setHours(0);
@@ -390,8 +377,8 @@ module.exports = EEX;
 // 	tomorrow.setDate(tomorrow.getDate() + 2);
 
 // 	const result = await next.getPrices({ dateStart: yesterday, dateEnd: tomorrow }).catch((error) => console.log(error));
-// 	// console.dir(result, { depth: null });
-// 	const result2 = await next.getPrices({ dateStart: yesterday, dateEnd: tomorrow }).catch((error) => console.log(error));
+// 	console.dir(result, { depth: null });
+// 	// const result2 = await next.getPrices({ dateStart: '2024-04-06T22:00:00.000Z', dateEnd: '2024-04-08T22:00:00.000Z' }).catch((error) => console.log(error));
 // 	// console.dir(result2, { depth: null });
 // };
 
